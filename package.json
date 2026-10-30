@@ -1,0 +1,36 @@
+{
+  "name": "softxu",
+  "private": true,
+  "packageManager": "pnpm@10.33.4",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm --filter @softxu/contracts build && pnpm --filter @softxu/api build && pnpm --filter @softxu/web build",
+    "typecheck": "pnpm --filter @softxu/contracts build && pnpm --filter @softxu/api typecheck && pnpm --filter @softxu/web typecheck",
+    "lint": "pnpm -r --if-present lint && prettier --check .",
+    "format": "prettier --write .",
+    "test": "pnpm --filter @softxu/contracts build && pnpm --filter @softxu/api test && pnpm --filter @softxu/web test",
+    "test:unit": "pnpm --filter @softxu/contracts build && pnpm --filter @softxu/api test:unit && pnpm --filter @softxu/web test",
+    "test:integration": "pnpm --filter @softxu/api test:integration",
+    "openapi": "pnpm --filter @softxu/api openapi",
+    "test:worker": "cd apps/image-worker && uv run ruff check . && uv run pytest",
+    "test:mobile": "cd apps/mobile && dart analyze && flutter test"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "argon2",
+      "esbuild",
+      "prisma"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}

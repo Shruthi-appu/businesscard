@@ -1,0 +1,9 @@
+node_modules
+dist
+.next
+coverage
+pnpm-lock.yaml
+apps/mobile
+apps/image-worker
+apps/api/openapi.json
+package-lock.json

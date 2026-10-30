@@ -1,0 +1,26 @@
+node_modules/
+dist/
+.next/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.turbo/
+*.log
+.DS_Store
+.idea/
+*.iml
+
+# Python
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+
+# Flutter
+apps/mobile/.dart_tool/
+apps/mobile/build/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
