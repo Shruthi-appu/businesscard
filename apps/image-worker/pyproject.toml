@@ -1,0 +1,20 @@
+[project]
+name = "softxu-image-worker"
+version = "0.1.0"
+description = "Softxu image worker. Pixel processing starts in a later phase."
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest>=8.3", "ruff>=0.8"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

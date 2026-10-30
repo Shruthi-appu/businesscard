@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  typescript:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: softxu
+          POSTGRES_DB: softxu_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U softxu -d softxu_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://softxu@localhost:5432/softxu_test
+      REDIS_URL: redis://localhost:6379/1
+      JWT_ISSUER: softxu-ci
+      PUBLIC_WEB_ORIGIN: http://localhost:3000
+      API_PUBLIC_ORIGIN: http://localhost:3001
+      NODE_ENV: test
+      COOKIE_SECURE: "false"
+      RATE_LIMIT_AUTH_MAX: "10000"
+      RATE_LIMIT_AUTH_WINDOW_SECONDS: "60"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Generate test-only signing secrets
+        run: |
+          echo "JWT_ACCESS_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @softxu/api exec prisma migrate deploy
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm openapi
+      - run: git diff --exit-code -- apps/api/openapi.json
+
+  worker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Ruff and pytest
+        working-directory: apps/image-worker
+        run: |
+          uv sync
+          uv run ruff check .
+          uv run pytest
+
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.9
+          cache: true
+      - name: Analyze and test
+        working-directory: apps/mobile
+        run: |
+          flutter pub get
+          dart analyze
+          flutter test

@@ -1,0 +1,520 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/v1/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Create an account and a session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Sign in with email and password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "New session. Web clients may omit the body and send the cookie."
+          }
+        },
+        "summary": "Rotate the refresh token and issue a new access token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Revoke the presented refresh token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/oidc/start": {
+      "get": {
+        "operationId": "AuthController_oidcStart",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Start OIDC sign-in. Unavailable until a provider is configured.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/oidc/callback": {
+      "get": {
+        "operationId": "AuthController_oidcCallback",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "OIDC callback. Unavailable until a provider is configured.",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "operationId": "MeController_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The signed-in user. The id always comes from the access token.",
+        "tags": [
+          "me"
+        ]
+      },
+      "patch": {
+        "operationId": "MeController_patchMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Profile update is a later phase.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/cards": {
+      "get": {
+        "operationId": "CardsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the caller's cards. Phase 1 returns an empty wallet.",
+        "tags": [
+          "cards"
+        ]
+      },
+      "post": {
+        "operationId": "CardsController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a card. Not available in this phase.",
+        "tags": [
+          "cards"
+        ]
+      }
+    },
+    "/v1/cards/{id}": {
+      "get": {
+        "operationId": "CardsController_getOne",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read one card. Not available in this phase.",
+        "tags": [
+          "cards"
+        ]
+      },
+      "patch": {
+        "operationId": "CardsController_patch",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a card. Not available in this phase.",
+        "tags": [
+          "cards"
+        ]
+      }
+    },
+    "/v1/assets/presign": {
+      "post": {
+        "operationId": "AssetsController_presign",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Presign a logo or avatar upload. Not available in this phase.",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
+    "/v1/assets/{id}/url": {
+      "get": {
+        "operationId": "AssetsController_url",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Presign a download. Not available in this phase.",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
+    "/v1/scans": {
+      "post": {
+        "operationId": "ScansController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start a scan. Not available in this phase.",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/v1/scans/{id}": {
+      "get": {
+        "operationId": "ScansController_getOne",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Scan job status. Not available in this phase.",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/v1/cards/{id}/shares": {
+      "post": {
+        "operationId": "SharesController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a share link. Not available in this phase.",
+        "tags": [
+          "shares"
+        ]
+      },
+      "get": {
+        "operationId": "SharesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List share links. Not available in this phase.",
+        "tags": [
+          "shares"
+        ]
+      }
+    },
+    "/v1/shares/{id}/revoke": {
+      "post": {
+        "operationId": "SharesController_revoke",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revoke a share link. Not available in this phase.",
+        "tags": [
+          "shares"
+        ]
+      }
+    },
+    "/v1/public/shares/{token}": {
+      "get": {
+        "operationId": "SharesController_preview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Public share preview. Not available in this phase.",
+        "tags": [
+          "shares"
+        ]
+      }
+    },
+    "/v1/public/shares/{token}/claim": {
+      "post": {
+        "operationId": "SharesController_claim",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Claim a share into the wallet. Not available in this phase.",
+        "tags": [
+          "shares"
+        ]
+      }
+    },
+    "/v1/exchange-sessions": {
+      "post": {
+        "operationId": "ExchangeController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open an exchange session. Not available in this phase.",
+        "tags": [
+          "exchange"
+        ]
+      }
+    },
+    "/v1/exchange-sessions/{id}": {
+      "get": {
+        "operationId": "ExchangeController_getOne",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read an exchange session. Not available in this phase.",
+        "tags": [
+          "exchange"
+        ]
+      }
+    },
+    "/v1/exchange-sessions/{id}/join": {
+      "post": {
+        "operationId": "ExchangeController_join",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Join an exchange session. Not available in this phase.",
+        "tags": [
+          "exchange"
+        ]
+      }
+    },
+    "/v1/exchange-sessions/{id}/consent": {
+      "post": {
+        "operationId": "ExchangeController_consent",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Consent to an exchange. Not available in this phase.",
+        "tags": [
+          "exchange"
+        ]
+      }
+    },
+    "/v1/exchange-sessions/{id}/complete": {
+      "post": {
+        "operationId": "ExchangeController_complete",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Complete an exchange. Not available in this phase.",
+        "tags": [
+          "exchange"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "HealthController_getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Database, Redis, object storage, and queue health.",
+        "tags": [
+          "health"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Softxu API",
+    "description": "Phase 1 foundation. Register, sign in, refresh, log out, read the signed-in profile, and list an empty wallet. Cards, assets, scans, shares, and exchange respond with 501 until a later phase.",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Local API"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {}
+  }
+}
