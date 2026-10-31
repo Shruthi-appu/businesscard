@@ -1,8 +1,10 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api_problem.dart';
+import '../../ui/softxu_controls.dart';
 import 'session_controller.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -33,7 +35,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
     if (session.hasError) {
       return _StatusScaffold(
-        message: "We couldn't reach Softxu. Check your connection and try again.",
+        message:
+            "We couldn't reach Softxu. Check your connection and try again.",
         alert: true,
         action: 'Retry',
         onAction: () => ref.invalidate(sessionProvider),
@@ -46,22 +49,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       problem: _problem,
       submitLabel: 'Sign in',
       pendingLabel: 'Signing in…',
-      footer: TextButton(
+      footer: SoftxuLink(
         onPressed: () => context.go('/register'),
-        child: const Text('Create an account'),
+        label: 'Create an account',
       ),
       fields: [
-        TextField(
+        SoftxuField(
           controller: _email,
+          label: 'Email',
           keyboardType: TextInputType.emailAddress,
           autofillHints: const [AutofillHints.email],
-          decoration: const InputDecoration(labelText: 'Email'),
         ),
-        TextField(
+        SoftxuField(
           controller: _password,
-          obscureText: true,
+          label: 'Password',
+          obscure: true,
           autofillHints: const [AutofillHints.password],
-          decoration: const InputDecoration(labelText: 'Password'),
         ),
       ],
       onSubmit: () async {
@@ -118,27 +121,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       problem: _problem,
       submitLabel: 'Create account',
       pendingLabel: 'Creating account…',
-      footer: TextButton(
+      footer: SoftxuLink(
         onPressed: () => context.go('/login'),
-        child: const Text('Sign in'),
+        label: 'Sign in',
       ),
       fields: [
-        TextField(
+        SoftxuField(
           controller: _name,
+          label: 'Display name',
           autofillHints: const [AutofillHints.name],
-          decoration: const InputDecoration(labelText: 'Display name'),
         ),
-        TextField(
+        SoftxuField(
           controller: _email,
+          label: 'Email',
           keyboardType: TextInputType.emailAddress,
           autofillHints: const [AutofillHints.email],
-          decoration: const InputDecoration(labelText: 'Email'),
         ),
-        TextField(
+        SoftxuField(
           controller: _password,
-          obscureText: true,
+          label: 'Password',
+          obscure: true,
           autofillHints: const [AutofillHints.newPassword],
-          decoration: const InputDecoration(labelText: 'Password'),
         ),
       ],
       onSubmit: () async {
@@ -197,34 +200,38 @@ class _AuthScaffold extends StatelessWidget {
             problem!.title,
             ...problem!.fieldErrors,
           ].where((line) => line.isNotEmpty).join(' ');
-    return Scaffold(
-      appBar: AppBar(title: const Text('Softxu')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Text(title, style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 8),
-            Text(subtitle),
-            const SizedBox(height: 16),
-            if (message != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(message, key: const Key('form-error')),
-              ),
-            ...fields.map(
-              (field) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: field,
-              ),
+    final heading = iphoneApp
+        ? Text(
+            title,
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
+          )
+        : Text(title, style: Theme.of(context).textTheme.headlineMedium);
+    return SoftxuPage(
+      title: 'Softxu',
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          heading,
+          const SizedBox(height: 8),
+          Text(subtitle),
+          const SizedBox(height: 16),
+          if (message != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(message, key: const Key('form-error')),
             ),
-            FilledButton(
-              onPressed: pending ? null : onSubmit,
-              child: Text(pending ? pendingLabel : submitLabel),
+          ...fields.map(
+            (field) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: field,
             ),
-            footer,
-          ],
-        ),
+          ),
+          SoftxuPrimaryButton(
+            onPressed: pending ? null : onSubmit,
+            label: pending ? pendingLabel : submitLabel,
+          ),
+          footer,
+        ],
       ),
     );
   }
@@ -245,18 +252,26 @@ class _StatusScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = alert ? Theme.of(context).colorScheme.error : null;
-    return Scaffold(
+    final color = alert
+        ? (iphoneApp
+              ? CupertinoColors.destructiveRed
+              : Theme.of(context).colorScheme.error)
+        : null;
+    return SoftxuPage(
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(message, textAlign: TextAlign.center, style: TextStyle(color: color)),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: color),
+              ),
               if (action != null) ...[
                 const SizedBox(height: 12),
-                FilledButton(onPressed: onAction, child: Text(action!)),
+                SoftxuPrimaryButton(onPressed: onAction, label: action!),
               ],
             ],
           ),
