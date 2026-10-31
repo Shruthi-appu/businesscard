@@ -3,7 +3,9 @@ name = "softxu-image-worker"
 version = "0.1.0"
 description = "Softxu image worker. Pixel processing starts in a later phase."
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pillow>=13.0.0",
+]
 
 [dependency-groups]
 dev = ["pytest>=8.3", "ruff>=0.8"]

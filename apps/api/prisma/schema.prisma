@@ -1,5 +1,4 @@
-// Phase 1 tables only. Card, scan, share, and exchange tables arrive in later phases.
-// avatar_asset_id is a nullable uuid until card_assets exists; the foreign key is added then.
+// Share and exchange tables arrive in later phases.
 
 generator client {
   provider = "prisma-client-js"
@@ -47,6 +46,8 @@ model User {
   notes           ContactNote[]
   reminders       Reminder[]
   networkingEvents NetworkingEvent[]
+  assets           CardAsset[]
+  ocrJobs          OcrJob[]
 
   @@unique([identityProvider, identitySubject])
   @@map("users")
@@ -61,7 +62,8 @@ model UserProfile {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatarAsset CardAsset? @relation(fields: [avatarAssetId], references: [id], onDelete: SetNull)
 
   @@map("user_profiles")
 }
@@ -226,6 +228,8 @@ model BusinessCard {
   activeVersion CardVersion?  @relation("ActiveCardVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
   versions      CardVersion[] @relation("CardVersions")
   walletEntries WalletEntry[]
+  sides         CardSide[]
+  ocrJobs       OcrJob[]
 
   @@index([ownerUserId, updatedAt])
   @@map("business_cards")
@@ -410,4 +414,127 @@ model NetworkingEvent {
 
   @@index([walletEntryId, occurredAt])
   @@map("networking_events")
+}
+
+enum AssetType {
+  original
+  enhanced
+  thumbnail
+  logo
+  avatar
+  export
+
+  @@map("asset_type")
+}
+
+enum AssetStatus {
+  pending
+  stored
+
+  @@map("asset_status")
+}
+
+enum CardSideName {
+  front
+  back
+
+  @@map("card_side_name")
+}
+
+enum OcrJobStatus {
+  queued
+  processing_image
+  processing_ocr
+  needs_review
+  completed
+  failed
+  cancelled
+
+  @@map("ocr_job_status")
+}
+
+model CardAsset {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerUserId    String      @map("owner_user_id") @db.Uuid
+  s3Key          String      @unique @map("s3_key")
+  assetType      AssetType   @map("asset_type")
+  status         AssetStatus @default(pending)
+  mimeType       String      @map("mime_type")
+  byteSize       Int         @map("byte_size")
+  checksumSha256 String      @map("checksum_sha256")
+  width          Int?
+  height         Int?
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  owner            User          @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  profiles         UserProfile[]
+  originalFor      CardSide[]    @relation("SideOriginal")
+  enhancedFor      CardSide[]    @relation("SideEnhanced")
+  thumbnailFor     CardSide[]    @relation("SideThumbnail")
+
+  @@index([ownerUserId])
+  @@map("card_assets")
+}
+
+model CardSide {
+  id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cardId             String       @map("card_id") @db.Uuid
+  side               CardSideName
+  originalAssetId    String       @map("original_asset_id") @db.Uuid
+  enhancedAssetId    String?      @map("enhanced_asset_id") @db.Uuid
+  thumbnailAssetId   String?      @map("thumbnail_asset_id") @db.Uuid
+  cropQuad           Json?        @map("crop_quad") @db.JsonB
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  card           BusinessCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  originalAsset  CardAsset    @relation("SideOriginal", fields: [originalAssetId], references: [id], onDelete: Restrict)
+  enhancedAsset  CardAsset?   @relation("SideEnhanced", fields: [enhancedAssetId], references: [id], onDelete: SetNull)
+  thumbnailAsset CardAsset?   @relation("SideThumbnail", fields: [thumbnailAssetId], references: [id], onDelete: SetNull)
+
+  @@unique([cardId, side])
+  @@map("card_sides")
+}
+
+model OcrJob {
+  id                 String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cardId             String       @map("card_id") @db.Uuid
+  ownerUserId        String       @map("owner_user_id") @db.Uuid
+  status             OcrJobStatus @default(queued)
+  imageProvider      String       @default("mock-image-v1") @map("image_provider")
+  ocrProvider        String       @default("mock-ocr-v1") @map("ocr_provider")
+  extractorProvider  String       @default("grounded-v1") @map("extractor_provider")
+  attempt            Int          @default(0)
+  draftVersion       Int          @default(1) @map("draft_version")
+  errorCode          String?      @map("error_code")
+  startedAt          DateTime?    @map("started_at") @db.Timestamptz
+  completedAt        DateTime?    @map("completed_at") @db.Timestamptz
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  card    BusinessCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  owner   User         @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  results OcrResult[]
+
+  @@index([status, createdAt])
+  @@index([ownerUserId])
+  @@map("ocr_jobs")
+}
+
+model OcrResult {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ocrJobId         String       @map("ocr_job_id") @db.Uuid
+  side             CardSideName
+  rawText          String       @map("raw_text")
+  blocks           Json         @db.JsonB
+  structuredResult Json         @map("structured_result") @db.JsonB
+  confidence       Json         @db.JsonB
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  job OcrJob @relation(fields: [ocrJobId], references: [id], onDelete: Cascade)
+
+  @@unique([ocrJobId, side])
+  @@map("ocr_results")
 }

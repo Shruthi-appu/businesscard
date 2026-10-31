@@ -8,6 +8,7 @@ export interface ObjectStorage {
   health(): Promise<void>;
   putObject(input: { key: string; body: Buffer; contentType: string }): Promise<void>;
   headObject(key: string): Promise<StoredObjectHead | null>;
+  getObject(key: string): Promise<Buffer | null>;
   presignPut(input: {
     key: string;
     contentType: string;

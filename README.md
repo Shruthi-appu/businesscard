@@ -1,6 +1,6 @@
 # businesscard
 
-Softxu is a business card wallet and networking platform for Softxu Technologies. This repository is the modular monolith described in the architecture plan: a NestJS API, a Next.js portal, a Flutter app, and a Python image worker. Phase 1 is accounts and an empty wallet. Phase 2 adds manual cards. Later phases are not in this tree.
+Softxu is a business card wallet and networking platform for Softxu Technologies. This repository is the modular monolith described in the architecture plan: a NestJS API, a Next.js portal, a Flutter app, and a Python image worker. Phase 1 is accounts and an empty wallet. Phase 2 adds manual cards. Phase 3 adds a scan that uses a mock reader. Later phases are not in this tree.
 
 ## What works
 
@@ -13,13 +13,14 @@ Local infrastructure is Docker Compose: Postgres 16, Redis 7, MinIO, and Elastic
 | `POST /v1/auth/register`, `/login`, `/refresh`, `/logout` | Working                                                                   |
 | `GET /v1/me`                                              | The caller only                                                           |
 | `GET /v1/cards`, `POST /v1/cards`                         | Manual wallet: create, search, favourites, tags                           |
-| Assets, scans, shares, exchange, `PATCH /v1/me`           | `501` `not_implemented`                                                   |
+| `POST /v1/scans` and the review flow                      | Mock reader, checksum check, retry, and dead letter                       |
+| Assets, shares, exchange, `PATCH /v1/me`                  | Assets can be presigned. Shares, exchange, and profile edits are `501`    |
 | `GET /v1/auth/oidc/*`                                     | `501` `identity_provider_unconfigured` until `OIDC_*` is set              |
 | `GET /health`                                             | Postgres, Redis, storage, and queue                                       |
 | `GET /docs`                                               | Swagger, off when `NODE_ENV=production`                                   |
 | Web `/register`, `/login`, `/wallet`                      | Working, including loading, empty, validation, denied, and network states |
 | Flutter                                                   | The same three screens. Tokens live in secure storage                     |
-| Image worker                                              | Health stub only. No OpenCV and no queue consumer                         |
+| Image worker                                              | Orient, contrast, thumbnail, and grounded fields. No live OCR provider    |
 
 ## Local setup
 
@@ -75,4 +76,4 @@ The first migration creates `users`, `user_profiles`, `refresh_tokens`, `audit_l
 
 ## Out of scope
 
-Phase 2 adds a manual wallet: create, edit a new version, search, favourites, tags, notes, and reminders. One user cannot read another user's card. Phases 3–7 are not started: camera, OCR, templates, public card pages, sharing, QR exchange, BLE, NFC, account export, and a hosted deploy. Fly, AWS, and Terraform are not part of this change. `avatar_asset_id` has no foreign key until the asset table exists.
+Phase 2 is the manual wallet. Phase 3 lets someone upload a front and a back, review the mock reading, and save the card. The original object is not rewritten. A real OCR provider is not configured. Camera behaviour on a physical phone is untested. Phases 4–7 are not started: templates, public card pages, sharing, QR exchange, BLE, NFC, account export, and a hosted deploy. Fly, AWS, and Terraform are not part of this change.

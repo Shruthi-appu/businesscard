@@ -3,6 +3,7 @@ import { NestFactory } from "@nestjs/core";
 import { SwaggerModule } from "@nestjs/swagger";
 import cookieParser from "cookie-parser";
 import type { NextFunction, Request, Response } from "express";
+import { json } from "express";
 import helmet from "helmet";
 
 import { AppModule } from "./app.module";
@@ -13,6 +14,7 @@ import { swaggerConfig } from "./swagger";
 
 export function configureApp(app: INestApplication): void {
   const env = app.get(EnvService);
+  app.use(json({ limit: "25mb" }));
   app.setGlobalPrefix("v1", {
     exclude: [{ path: "health", method: RequestMethod.GET }],
   });
@@ -43,6 +45,7 @@ export function configureApp(app: INestApplication): void {
 
 export async function createApp(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule, {
+    bodyParser: false,
     logger: process.env.NODE_ENV === "test" ? false : ["error", "warn", "log"],
   });
   configureApp(app);

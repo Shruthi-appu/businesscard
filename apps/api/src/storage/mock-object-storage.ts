@@ -20,6 +20,11 @@ export class MockObjectStorage implements ObjectStorage {
     });
   }
 
+  async getObject(key: string): Promise<Buffer | null> {
+    const stored = this.objects.get(key);
+    return stored ? Buffer.from(stored.body) : null;
+  }
+
   async headObject(key: string): Promise<StoredObjectHead | null> {
     const stored = this.objects.get(key);
     if (!stored) return null;
