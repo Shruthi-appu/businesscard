@@ -1,27 +1,28 @@
 # businesscard
 
-Softxu is a business card wallet and networking platform for Softxu Technologies. This repository is the modular monolith described in the architecture plan: a NestJS API, a Next.js portal, a Flutter app, and a Python image worker. Phase 1 is accounts and an empty wallet. Phase 2 adds manual cards. Phase 3 adds a scan that uses a mock reader. Phase 4 adds digital cards and a public page. Later phases are not in this tree.
+Softxu is a business card wallet and networking platform for Softxu Technologies. This repository is the modular monolith described in the architecture plan: a NestJS API, a Next.js portal, a Flutter app, and a Python image worker. Phase 1 is accounts and an empty wallet. Phase 2 adds manual cards. Phase 3 adds a scan that uses a mock reader. Phase 4 adds digital cards and a public page. Phase 5 adds a share link that expires and can be revoked. Later phases are not in this tree.
 
 ## What works
 
-A new person can register, sign in, and open a wallet on the web app and on the Flutter app. On the web they can add a card, edit it, search, mark a favourite, tag it, and publish a digital card. The Flutter wallet lists card titles. The API checks the access token on every protected route, so one account cannot read another account's card or profile. Refresh tokens rotate and are stored only as an HMAC. Passwords are Argon2id hashes.
+A new person can register, sign in, and open a wallet on the web app and on the Flutter app. On the web they can add a card, edit it, search, mark a favourite, tag it, publish a digital card, and share a link to chosen fields. The Flutter wallet lists card titles. The API checks the access token on every protected route, so one account cannot read another account's card or profile. Refresh tokens rotate and are stored only as an HMAC. Passwords are Argon2id hashes.
 
 Local infrastructure is Docker Compose: Postgres 16, Redis 7, MinIO, and ElasticMQ. Nothing here provisions Fly or AWS, and there is no Terraform.
 
-| Surface                                                   | Status                                                                    |
-| --------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `POST /v1/auth/register`, `/login`, `/refresh`, `/logout` | Working                                                                   |
-| `GET /v1/me`                                              | The caller only                                                           |
-| `GET /v1/cards`, `POST /v1/cards`                         | Manual wallet: create, search, favourites, tags                           |
-| `POST /v1/scans` and the review flow                      | Mock reader, checksum check, retry, and dead letter                       |
-| Digital cards, templates, `/v1/public/cards/:slug`        | Two templates, design, publish, and QR, PNG, PDF, vCard export            |
-| Assets, shares, exchange, `PATCH /v1/me`                  | Assets can be presigned. Shares, exchange, and profile edits are `501`    |
-| `GET /v1/auth/oidc/*`                                     | `501` `identity_provider_unconfigured` until `OIDC_*` is set              |
-| `GET /health`                                             | Postgres, Redis, storage, and queue                                       |
-| `GET /docs`                                               | Swagger, off when `NODE_ENV=production`                                   |
-| Web `/register`, `/login`, `/wallet`, `/c/[slug]`         | Working, including loading, empty, validation, denied, and network states |
-| Flutter                                                   | The same three screens. Tokens live in secure storage                     |
-| Image worker                                              | Orient, contrast, thumbnail, and grounded fields. No live OCR provider    |
+| Surface                                                         | Status                                                                    |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `POST /v1/auth/register`, `/login`, `/refresh`, `/logout`       | Working                                                                   |
+| `GET /v1/me`                                                    | The caller only                                                           |
+| `GET /v1/cards`, `POST /v1/cards`                               | Manual wallet: create, search, favourites, tags                           |
+| `POST /v1/scans` and the review flow                            | Mock reader, checksum check, retry, and dead letter                       |
+| Digital cards, templates, `/v1/public/cards/:slug`              | Two templates, design, publish, and QR, PNG, PDF, vCard export            |
+| Share links, `/v1/public/shares/:token`, `/s/[token]`           | Hashed token, expiry, revoke, optional PIN, vCard, and claim              |
+| Assets, shares, exchange, `PATCH /v1/me`                        | Assets can be presigned. Shares, exchange, and profile edits are `501`    |
+| `GET /v1/auth/oidc/*`                                           | `501` `identity_provider_unconfigured` until `OIDC_*` is set              |
+| `GET /health`                                                   | Postgres, Redis, storage, and queue                                       |
+| `GET /docs`                                                     | Swagger, off when `NODE_ENV=production`                                   |
+| Web `/register`, `/login`, `/wallet`, `/c/[slug]`, `/s/[token]` | Working, including loading, empty, validation, denied, and network states |
+| Flutter                                                         | The same three screens. Tokens live in secure storage                     |
+| Image worker                                                    | Orient, contrast, thumbnail, and grounded fields. No live OCR provider    |
 
 ## Local setup
 
@@ -73,8 +74,8 @@ pnpm test:mobile
 
 GitHub Actions runs the TypeScript typecheck, lint, unit tests, and integration tests against Postgres and Redis service containers, plus Ruff, pytest, `dart analyze`, and `flutter test`.
 
-Migrations are additive: accounts, the manual wallet, scan assets, and card templates. If they have to be undone before any later migration, restore a database snapshot. There is no down migration.
+Migrations are additive: accounts, the manual wallet, scan assets, card templates, and share links. If they have to be undone before any later migration, restore a database snapshot. There is no down migration.
 
 ## Out of scope
 
-Phase 4 publishes a digital card at `/c/[slug]`. The public page and the vCard, PNG, and PDF exports include only fields marked public. A real OCR provider is not configured. Camera behaviour on a physical phone is untested. Phases 5–7 are not started: sharing, QR exchange, BLE, NFC, account export, and a hosted deploy. Fly, AWS, and Terraform are not part of this change.
+Phase 5 shares chosen fields at `/s/[token]`. The link stores a hash of the token, expires, can require a PIN, and can be revoked. A vCard and a wallet claim include only those fields. Text delivery stays on the mock sender and does not call a live SMS network. The web share button uses the device share sheet when the browser provides one. A real OCR provider is not configured. Camera behaviour on a physical phone is untested. Phases 6–7 are not started: QR exchange, BLE, NFC, account export, and a hosted deploy. Fly, AWS, and Terraform are not part of this change.

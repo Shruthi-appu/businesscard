@@ -142,6 +142,17 @@ label {
   gap: 0.35rem;
   font-size: 0.95rem;
 }
+label.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+label.choice input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.2rem;
+  padding: 0;
+}
 input,
 select {
   font: inherit;

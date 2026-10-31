@@ -151,48 +151,74 @@ export class CardsService {
                     },
                     { notes: { some: { body: { contains: q, mode: "insensitive" } } } },
                     { tags: { some: { tag: { name: { contains: q, mode: "insensitive" } } } } },
+                    { snapshot: { payload: { string_contains: q } } },
                   ],
                 },
               ],
             }
           : {}),
       },
-      include: { card: { include: { activeVersion: { include: { contacts: true } } } } },
+      include: {
+        card: { include: { activeVersion: { include: { contacts: true } } } },
+        snapshot: true,
+      },
       orderBy: [{ savedAt: "desc" }, { id: "desc" }],
       take: limit + 1,
     });
     const page = entries.slice(0, limit);
     const last = page.at(-1);
     return {
-      items: page.map((entry) => ({
-        id: entry.card?.id ?? entry.id,
-        walletEntryId: entry.id,
-        title: entry.card?.title ?? "Saved card",
-        cardType: entry.card?.cardType ?? "manual",
-        source: entry.source,
-        isFavourite: entry.isFavourite,
-        headline: primary(entry.card?.activeVersion?.contacts ?? [], "name"),
-        company: primary(entry.card?.activeVersion?.contacts ?? [], "company"),
-        savedAt: entry.savedAt.toISOString(),
-      })),
+      items: page.map((entry) => {
+        const snapped = snapshotFields(entry.snapshot?.payload);
+        const contacts =
+          entry.card?.activeVersion?.contacts ??
+          snapped.contacts.map((contact) => ({
+            kind: contact.kind,
+            valueRaw: contact.valueRaw,
+            isPrimary: contact.isPrimary,
+          }));
+        return {
+          id: entry.card?.id ?? entry.id,
+          walletEntryId: entry.id,
+          title: entry.card?.title ?? snapped.title ?? "Saved card",
+          cardType: entry.card?.cardType ?? "manual",
+          source: entry.source,
+          isFavourite: entry.isFavourite,
+          headline: primary(contacts, "name"),
+          company: primary(contacts, "company"),
+          savedAt: entry.savedAt.toISOString(),
+        };
+      }),
       nextCursor:
         entries.length > limit && last ? `${last.savedAt.toISOString()}|${last.id}` : null,
     };
   }
 
   async get(userId: string, cardId: string) {
-    const found = await this.owned(userId, cardId);
-    const warnings = await this.duplicates(
-      userId,
-      (found.card.activeVersion?.contacts ?? []).map((contact) => ({
-        kind: contact.kind,
-        value: contact.valueRaw,
-        valueRaw: contact.valueRaw,
-        valueNormalized: contact.valueNormalized,
-      })),
-      cardId,
-    );
-    return this.present(found.card, found.entry, warnings);
+    const ownedEntry = await this.prisma.walletEntry.findFirst({
+      where: { userId, cardId, deletedAt: null, origin: "owned" },
+      include: { card: { include: detailInclude }, tags: { include: { tag: true } } },
+    });
+    if (ownedEntry?.card && ownedEntry.card.ownerUserId === userId) {
+      const warnings = await this.duplicates(
+        userId,
+        (ownedEntry.card.activeVersion?.contacts ?? []).map((contact) => ({
+          kind: contact.kind,
+          value: contact.valueRaw,
+          valueRaw: contact.valueRaw,
+          valueNormalized: contact.valueNormalized,
+        })),
+        cardId,
+      );
+      return this.present(ownedEntry.card, ownedEntry, warnings);
+    }
+    const received = await this.prisma.walletEntry.findFirst({
+      where: { id: cardId, userId, deletedAt: null, origin: "received" },
+      include: { snapshot: true, tags: { include: { tag: true } } },
+    });
+    const snapshot = received?.snapshot;
+    if (!received || !snapshot) throw new ApiException(404, "not_found", "Card was not found");
+    return this.presentSnapshot({ ...received, snapshot });
   }
 
   async patchTitle(userId: string, cardId: string, title: string | undefined, requestId: string) {
@@ -455,6 +481,8 @@ export class CardsService {
       isFavourite: entry.isFavourite,
       savedAt: entry.savedAt.toISOString(),
       versionNumber: version?.versionNumber ?? 1,
+      versionId: version?.id ?? null,
+      readOnly: false,
       contacts: (version?.contacts ?? []).map((contact) => ({
         id: contact.id,
         kind: contact.kind,
@@ -479,6 +507,36 @@ export class CardsService {
       })),
       tags: (entry.tags ?? []).map((link) => ({ id: link.tag.id, name: link.tag.name })),
       duplicateWarnings,
+    };
+  }
+
+  private presentSnapshot(entry: {
+    id: string;
+    isFavourite: boolean;
+    source: string;
+    savedAt: Date;
+    tags?: Array<{ tag: { id: string; name: string } }>;
+    snapshot: { sourceVersionId: string; payload: Prisma.JsonValue };
+  }) {
+    const payload = readSnapshot(entry.snapshot.payload);
+    return {
+      id: entry.id,
+      walletEntryId: entry.id,
+      title: payload.title,
+      cardType: "manual" as const,
+      status: "active" as const,
+      visibility: "private" as const,
+      source: entry.source,
+      isFavourite: entry.isFavourite,
+      savedAt: entry.savedAt.toISOString(),
+      versionNumber: 1,
+      versionId: entry.snapshot.sourceVersionId,
+      readOnly: true,
+      contacts: payload.contacts,
+      addresses: payload.addresses,
+      socials: payload.socials,
+      tags: (entry.tags ?? []).map((link) => ({ id: link.tag.id, name: link.tag.name })),
+      duplicateWarnings: [],
     };
   }
 
@@ -560,4 +618,96 @@ function decodeCursor(cursor: string | undefined): { savedAt: Date; id: string }
 
 function hashBody(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function snapshotFields(payload: Prisma.JsonValue | null | undefined): {
+  title: string | null;
+  contacts: Array<{ kind: string; valueRaw: string; isPrimary: boolean }>;
+} {
+  const parsed = readSnapshot(payload);
+  return {
+    title: parsed.title,
+    contacts: parsed.contacts.map((contact) => ({
+      kind: contact.kind,
+      valueRaw: contact.value,
+      isPrimary: contact.isPrimary,
+    })),
+  };
+}
+
+function readSnapshot(payload: Prisma.JsonValue | null | undefined): {
+  title: string;
+  contacts: Array<{
+    id: string;
+    kind: string;
+    label: string | null;
+    value: string;
+    valueNormalized: string | null;
+    isPublic: boolean;
+    isPrimary: boolean;
+    whatsappState: string;
+    source: string;
+  }>;
+  addresses: Array<{ id: string; formattedAddress: string; isPublic: boolean }>;
+  socials: Array<{ id: string; platform: string; url: string; isPublic: boolean }>;
+} {
+  const body =
+    payload && typeof payload === "object" && !Array.isArray(payload)
+      ? (payload as Record<string, unknown>)
+      : {};
+  const contacts = Array.isArray(body.contacts)
+    ? body.contacts.flatMap((item) => {
+        if (!item || typeof item !== "object") return [];
+        const row = item as Record<string, unknown>;
+        if (typeof row.kind !== "string" || typeof row.value !== "string") return [];
+        return [
+          {
+            id: typeof row.id === "string" ? row.id : row.kind,
+            kind: row.kind,
+            label: typeof row.label === "string" ? row.label : null,
+            value: row.value,
+            valueNormalized: typeof row.valueNormalized === "string" ? row.valueNormalized : null,
+            isPublic: true,
+            isPrimary: row.isPrimary === true,
+            whatsappState: typeof row.whatsappState === "string" ? row.whatsappState : "unknown",
+            source: "user",
+          },
+        ];
+      })
+    : [];
+  const addresses = Array.isArray(body.addresses)
+    ? body.addresses.flatMap((item) => {
+        if (!item || typeof item !== "object") return [];
+        const row = item as Record<string, unknown>;
+        if (typeof row.formattedAddress !== "string") return [];
+        return [
+          {
+            id: typeof row.id === "string" ? row.id : row.formattedAddress,
+            formattedAddress: row.formattedAddress,
+            isPublic: true,
+          },
+        ];
+      })
+    : [];
+  const socials = Array.isArray(body.socials)
+    ? body.socials.flatMap((item) => {
+        if (!item || typeof item !== "object") return [];
+        const row = item as Record<string, unknown>;
+        if (typeof row.platform !== "string" || typeof row.url !== "string") return [];
+        return [
+          {
+            id: typeof row.id === "string" ? row.id : row.url,
+            platform: row.platform,
+            url: row.url,
+            isPublic: true,
+          },
+        ];
+      })
+    : [];
+  return {
+    title: typeof body.title === "string" && body.title.trim() ? body.title : "Saved card",
+    contacts,
+    addresses,
+    socials,
+  };
 }

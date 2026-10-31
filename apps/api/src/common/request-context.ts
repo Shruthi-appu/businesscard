@@ -23,6 +23,12 @@ export type RequestWithContext = {
 
 const logger = new Logger("http");
 
+export function redactSharePath(path: string): string {
+  return path.replace(/(\/public\/shares\/)([^/?]+)/g, (_match, prefix: string, token: string) => {
+    return `${prefix}${token.slice(0, 4)}`;
+  });
+}
+
 export function requestContextMiddleware(
   req: RequestWithContext,
   res: Response,
@@ -35,7 +41,7 @@ export function requestContextMiddleware(
   const started = Date.now();
   res.on("finish", () => {
     logger.log(
-      `${req.method} ${req.path} ${res.statusCode} ${Date.now() - started}ms requestId=${requestId}`,
+      `${req.method} ${redactSharePath(req.path)} ${res.statusCode} ${Date.now() - started}ms requestId=${requestId}`,
     );
   });
   next();

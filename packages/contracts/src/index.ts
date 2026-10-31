@@ -134,6 +134,31 @@ export const exportCardRequestSchema = z.object({
   format: z.enum(["qr", "png", "pdf", "vcf"]),
 });
 
+export const createShareRequestSchema = z.object({
+  versionId: z.uuid(),
+  fieldIds: z.array(z.uuid()).min(1).max(40),
+  expiresInSeconds: z
+    .number()
+    .int()
+    .min(60)
+    .max(60 * 60 * 24 * 30)
+    .optional(),
+  recipientPhone: z.string().trim().min(8).max(20).optional(),
+  pin: z
+    .string()
+    .regex(/^\d{4,8}$/)
+    .optional(),
+  sendSms: z.boolean().optional(),
+});
+
+export const claimShareRequestSchema = z.object({
+  consent: z.literal(true),
+  pin: z
+    .string()
+    .regex(/^\d{4,8}$/)
+    .optional(),
+});
+
 export const cardListQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
   filter: z.enum(["all", "favourites", "manual", "created", "scanned", "received"]).optional(),
@@ -204,6 +229,8 @@ export type CreateDigitalCardRequest = z.infer<typeof createDigitalCardRequestSc
 export type DesignPatchRequest = z.infer<typeof designPatchRequestSchema>;
 export type PublishCardRequest = z.infer<typeof publishCardRequestSchema>;
 export type ExportCardRequest = z.infer<typeof exportCardRequestSchema>;
+export type CreateShareRequest = z.infer<typeof createShareRequestSchema>;
+export type ClaimShareRequest = z.infer<typeof claimShareRequestSchema>;
 export type ContactInput = z.infer<typeof contactInputSchema>;
 export type AddressInput = z.infer<typeof addressInputSchema>;
 export type SocialInput = z.infer<typeof socialInputSchema>;

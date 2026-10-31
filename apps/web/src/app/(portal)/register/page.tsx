@@ -1,25 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { RegisterForm } from "@/components/auth-forms";
 import { LoadingState, NetworkState } from "@/components/states";
 import { ApiError, fieldErrorMap, registerAccount } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { safeReturnPath } from "@/lib/return-path";
 
 export default function RegisterPage() {
   const auth = useAuth();
   const router = useRouter();
+  const next = safeReturnPath(useSearchParams().get("next"));
   const [pending, setPending] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [network, setNetwork] = useState(false);
 
   useEffect(() => {
-    if (auth.status === "ready") router.replace("/wallet");
-  }, [auth.status, router]);
+    if (auth.status === "ready") router.replace(next ?? "/wallet");
+  }, [auth.status, next, router]);
 
   if (auth.status === "loading" || auth.status === "ready") {
     return <LoadingState label="Checking your session…" />;
@@ -42,7 +44,7 @@ export default function RegisterPage() {
           try {
             const session = await registerAccount(input);
             auth.setSession(session.accessToken, session.user);
-            router.push("/wallet");
+            router.push(next ?? "/wallet");
           } catch (error) {
             if (error instanceof ApiError && error.network) {
               setNetwork(true);
@@ -60,7 +62,8 @@ export default function RegisterPage() {
         }}
       />
       <p>
-        Already registered? <Link href="/login">Sign in</Link>
+        Already registered?{" "}
+        <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}>Sign in</Link>
       </p>
     </section>
   );

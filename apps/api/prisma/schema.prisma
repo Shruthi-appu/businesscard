@@ -1,4 +1,4 @@
-// Share and exchange tables arrive in later phases.
+// Exchange tables arrive in a later phase.
 
 generator client {
   provider = "prisma-client-js"
@@ -48,6 +48,9 @@ model User {
   networkingEvents NetworkingEvent[]
   assets           CardAsset[]
   ocrJobs          OcrJob[]
+  sharesSent       CardShare[]    @relation("ShareSender")
+  shareClaims      ShareClaim[]
+  snapshots        CardSnapshot[]
 
   @@unique([identityProvider, identitySubject])
   @@map("users")
@@ -230,6 +233,8 @@ model BusinessCard {
   walletEntries WalletEntry[]
   sides         CardSide[]
   ocrJobs       OcrJob[]
+  shares        CardShare[]
+  snapshots     CardSnapshot[]
 
   @@index([ownerUserId, updatedAt])
   @@map("business_cards")
@@ -250,6 +255,8 @@ model CardVersion {
   contacts      CardContact[]
   socialLinks   CardSocialLink[]
   addresses     CardAddress[]
+  shares        CardShare[]
+  snapshots     CardSnapshot[]
 
   @@unique([cardId, versionNumber])
   @@map("card_versions")
@@ -344,6 +351,9 @@ model WalletEntry {
 
   user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   card     BusinessCard?     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  snapshot CardSnapshot?     @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  share    CardShare?        @relation(fields: [shareId], references: [id], onDelete: SetNull)
+  claim    ShareClaim?
   tags     CardTagLink[]
   notes    ContactNote[]
   reminders Reminder[]
@@ -552,4 +562,67 @@ model CardTemplate {
 
   @@unique([key, version])
   @@map("card_templates")
+}
+
+model CardShare {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cardId             String    @map("card_id") @db.Uuid
+  cardVersionId      String    @map("card_version_id") @db.Uuid
+  senderUserId       String    @map("sender_user_id") @db.Uuid
+  tokenHash          String    @unique @map("token_hash")
+  recipientPhoneHash String?   @map("recipient_phone_hash")
+  scope              Json      @db.JsonB
+  pinHash            String?   @map("pin_hash")
+  expiresAt          DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt          DateTime? @map("revoked_at") @db.Timestamptz
+  maxClaims          Int       @default(1) @map("max_claims")
+  claimCount         Int       @default(0) @map("claim_count")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  card     BusinessCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  version  CardVersion  @relation(fields: [cardVersionId], references: [id], onDelete: Restrict)
+  sender   User         @relation("ShareSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+  claims   ShareClaim[]
+  entries  WalletEntry[]
+
+  @@index([cardId])
+  @@index([senderUserId])
+  @@map("card_shares")
+}
+
+model ShareClaim {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shareId         String   @map("share_id") @db.Uuid
+  claimedByUserId String?  @map("claimed_by_user_id") @db.Uuid
+  walletEntryId   String?  @unique @map("wallet_entry_id") @db.Uuid
+  claimedAt       DateTime @default(now()) @map("claimed_at") @db.Timestamptz
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  share       CardShare    @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  claimedBy   User?        @relation(fields: [claimedByUserId], references: [id], onDelete: SetNull)
+  walletEntry WalletEntry? @relation(fields: [walletEntryId], references: [id], onDelete: SetNull)
+
+  @@index([shareId])
+  @@map("share_claims")
+}
+
+model CardSnapshot {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sourceCardId    String   @map("source_card_id") @db.Uuid
+  sourceVersionId String   @map("source_version_id") @db.Uuid
+  ownerUserId     String   @map("owner_user_id") @db.Uuid
+  capturedAt      DateTime @default(now()) @map("captured_at") @db.Timestamptz
+  payload         Json     @db.JsonB
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  sourceCard    BusinessCard  @relation(fields: [sourceCardId], references: [id], onDelete: Restrict)
+  sourceVersion CardVersion   @relation(fields: [sourceVersionId], references: [id], onDelete: Restrict)
+  owner         User          @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  walletEntries WalletEntry[]
+
+  @@index([ownerUserId])
+  @@map("card_snapshots")
 }
