@@ -237,3 +237,9 @@ select {
   border-radius: 1rem;
   padding: 1rem;
 }
+img.qr {
+  width: 220px;
+  height: auto;
+  background: white;
+  padding: 0.5rem;
+}

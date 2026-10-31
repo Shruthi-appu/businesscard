@@ -250,10 +250,7 @@ describe("phase 1 auth and empty wallet", () => {
   it("returns 501 from unfinished modules and unconfigured OIDC", async () => {
     const created = await register(app, "skeleton@example.com");
     const token = (created.body as AuthBody).accessToken;
-    const routes: Array<[string, string]> = [
-      ["post", "/v1/exchange-sessions"],
-      ["patch", "/v1/me"],
-    ];
+    const routes: Array<[string, string]> = [["patch", "/v1/me"]];
     for (const [method, path] of routes) {
       const agent = request(app.getHttpServer());
       const call =
@@ -278,6 +275,12 @@ describe("phase 1 auth and empty wallet", () => {
       .send({});
     expect(emptyShare.status).toBe(400);
     expect(emptyShare.body.code).toBe("validation_error");
+    const emptyExchange = await request(app.getHttpServer())
+      .post("/v1/exchange-sessions")
+      .set("Authorization", `Bearer ${token}`)
+      .send({});
+    expect(emptyExchange.status).toBe(400);
+    expect(emptyExchange.body.code).toBe("validation_error");
     const emptyCard = await request(app.getHttpServer())
       .post("/v1/cards")
       .set("Authorization", `Bearer ${token}`)

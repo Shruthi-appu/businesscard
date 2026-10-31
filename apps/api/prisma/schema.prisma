@@ -1,5 +1,3 @@
-// Exchange tables arrive in a later phase.
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -51,6 +49,8 @@ model User {
   sharesSent       CardShare[]    @relation("ShareSender")
   shareClaims      ShareClaim[]
   snapshots        CardSnapshot[]
+  exchangeSessions ExchangeSession[] @relation("ExchangeInitiator")
+  exchangeParticipations ExchangeParticipant[]
 
   @@unique([identityProvider, identitySubject])
   @@map("users")
@@ -235,6 +235,7 @@ model BusinessCard {
   ocrJobs       OcrJob[]
   shares        CardShare[]
   snapshots     CardSnapshot[]
+  exchangeSelections ExchangeParticipant[] @relation("ExchangeSelection")
 
   @@index([ownerUserId, updatedAt])
   @@map("business_cards")
@@ -353,6 +354,7 @@ model WalletEntry {
   card     BusinessCard?     @relation(fields: [cardId], references: [id], onDelete: Cascade)
   snapshot CardSnapshot?     @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
   share    CardShare?        @relation(fields: [shareId], references: [id], onDelete: SetNull)
+  exchangeSession ExchangeSession? @relation(fields: [exchangeSessionId], references: [id], onDelete: SetNull)
   claim    ShareClaim?
   tags     CardTagLink[]
   notes    ContactNote[]
@@ -625,4 +627,78 @@ model CardSnapshot {
 
   @@index([ownerUserId])
   @@map("card_snapshots")
+}
+
+enum ExchangeStatus {
+  open
+  joined
+  accepted
+  declined
+  expired
+  failed
+
+  @@map("exchange_status")
+}
+
+enum ExchangeMode {
+  one_way
+  mutual
+
+  @@map("exchange_mode")
+}
+
+enum ExchangeMethod {
+  qr
+  ble
+  nfc
+  link
+
+  @@map("exchange_method")
+}
+
+enum ExchangeConsent {
+  pending
+  accepted
+  declined
+
+  @@map("exchange_consent")
+}
+
+model ExchangeSession {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  initiatorUserId String         @map("initiator_user_id") @db.Uuid
+  status          ExchangeStatus @default(open)
+  mode            ExchangeMode
+  method          ExchangeMethod
+  codeHash        String         @unique @map("code_hash")
+  expiresAt       DateTime       @map("expires_at") @db.Timestamptz
+  acceptedAt      DateTime?      @map("accepted_at") @db.Timestamptz
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  initiator    User                  @relation("ExchangeInitiator", fields: [initiatorUserId], references: [id], onDelete: Cascade)
+  participants ExchangeParticipant[]
+  entries      WalletEntry[]
+
+  @@index([codeHash, expiresAt])
+  @@map("exchange_sessions")
+}
+
+model ExchangeParticipant {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId      String          @map("session_id") @db.Uuid
+  userId         String          @map("user_id") @db.Uuid
+  selectedCardId String?         @map("selected_card_id") @db.Uuid
+  consentStatus  ExchangeConsent @default(pending) @map("consent_status")
+  consentedAt    DateTime?       @map("consented_at") @db.Timestamptz
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  session      ExchangeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  selectedCard BusinessCard?   @relation("ExchangeSelection", fields: [selectedCardId], references: [id], onDelete: SetNull)
+
+  @@unique([sessionId, userId])
+  @@index([userId])
+  @@map("exchange_participants")
 }

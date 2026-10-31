@@ -22,6 +22,8 @@ const envSchema = z.object({
   RATE_LIMIT_AUTH_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_SHARE_MAX: z.coerce.number().int().positive().default(30),
   RATE_LIMIT_SHARE_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
+  RATE_LIMIT_EXCHANGE_MAX: z.coerce.number().int().positive().default(30),
+  RATE_LIMIT_EXCHANGE_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
   SMS_PROVIDER: z.string().default(""),
   SMS_API_KEY: z.string().default(""),
   SMS_FROM: z.string().default(""),

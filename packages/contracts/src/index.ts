@@ -159,6 +159,22 @@ export const claimShareRequestSchema = z.object({
     .optional(),
 });
 
+export const createExchangeRequestSchema = z.object({
+  cardId: z.uuid(),
+  mode: z.enum(["one_way", "mutual"]),
+  method: z.enum(["qr", "ble", "nfc", "link"]),
+  expiresInSeconds: z.number().int().min(30).max(600).optional(),
+});
+
+export const joinExchangeRequestSchema = z.object({
+  code: z.string().trim().min(8).max(80),
+});
+
+export const consentExchangeRequestSchema = z.object({
+  accept: z.boolean(),
+  cardId: z.uuid().optional(),
+});
+
 export const cardListQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
   filter: z.enum(["all", "favourites", "manual", "created", "scanned", "received"]).optional(),
@@ -231,6 +247,9 @@ export type PublishCardRequest = z.infer<typeof publishCardRequestSchema>;
 export type ExportCardRequest = z.infer<typeof exportCardRequestSchema>;
 export type CreateShareRequest = z.infer<typeof createShareRequestSchema>;
 export type ClaimShareRequest = z.infer<typeof claimShareRequestSchema>;
+export type CreateExchangeRequest = z.infer<typeof createExchangeRequestSchema>;
+export type JoinExchangeRequest = z.infer<typeof joinExchangeRequestSchema>;
+export type ConsentExchangeRequest = z.infer<typeof consentExchangeRequestSchema>;
 export type ContactInput = z.infer<typeof contactInputSchema>;
 export type AddressInput = z.infer<typeof addressInputSchema>;
 export type SocialInput = z.infer<typeof socialInputSchema>;

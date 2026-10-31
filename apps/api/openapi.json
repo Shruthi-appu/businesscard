@@ -857,7 +857,7 @@
             "bearer": []
           }
         ],
-        "summary": "Open an exchange session. Not available in this phase.",
+        "summary": "Open a QR or link exchange. BLE and NFC are not available.",
         "tags": [
           "exchange"
         ]
@@ -877,7 +877,7 @@
             "bearer": []
           }
         ],
-        "summary": "Read an exchange session. Not available in this phase.",
+        "summary": "Read an exchange the caller has joined.",
         "tags": [
           "exchange"
         ]
@@ -888,7 +888,7 @@
         "operationId": "ExchangeController_join",
         "parameters": [],
         "responses": {
-          "201": {
+          "200": {
             "description": ""
           }
         },
@@ -897,7 +897,7 @@
             "bearer": []
           }
         ],
-        "summary": "Join an exchange session. Not available in this phase.",
+        "summary": "Join an exchange with its one-time code.",
         "tags": [
           "exchange"
         ]
@@ -908,7 +908,7 @@
         "operationId": "ExchangeController_consent",
         "parameters": [],
         "responses": {
-          "201": {
+          "200": {
             "description": ""
           }
         },
@@ -917,7 +917,7 @@
             "bearer": []
           }
         ],
-        "summary": "Consent to an exchange. Not available in this phase.",
+        "summary": "Accept or decline an exchange.",
         "tags": [
           "exchange"
         ]
@@ -928,7 +928,7 @@
         "operationId": "ExchangeController_complete",
         "parameters": [],
         "responses": {
-          "201": {
+          "200": {
             "description": ""
           }
         },
@@ -937,7 +937,7 @@
             "bearer": []
           }
         ],
-        "summary": "Complete an exchange. Not available in this phase.",
+        "summary": "Save the offered cards after the required consents.",
         "tags": [
           "exchange"
         ]
@@ -961,7 +961,7 @@
   },
   "info": {
     "title": "Softxu API",
-    "description": "Accounts, a manual wallet, mock scanning, digital cards, and share links. Exchange and profile edits respond with 501 until a later phase.",
+    "description": "Accounts, a manual wallet, mock scanning, digital cards, share links, and QR exchange. Profile edits respond with 501 until a later phase.",
     "version": "0.1.0",
     "contact": {}
   },
