@@ -399,7 +399,47 @@
             "bearer": []
           }
         ],
-        "summary": "Presign a logo or avatar upload. Not available in this phase.",
+        "summary": "Start a logo or avatar upload.",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
+    "/v1/assets/{id}/bytes": {
+      "post": {
+        "operationId": "AssetsController_storeBytes",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Store logo or avatar bytes when storage is in memory.",
+        "tags": [
+          "assets"
+        ]
+      }
+    },
+    "/v1/assets/{id}/complete": {
+      "post": {
+        "operationId": "AssetsController_complete",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Verify the logo or avatar checksum.",
         "tags": [
           "assets"
         ]
@@ -419,7 +459,7 @@
             "bearer": []
           }
         ],
-        "summary": "Presign a download. Not available in this phase.",
+        "summary": "Return a 60-second download URL for the caller's asset.",
         "tags": [
           "assets"
         ]
@@ -439,7 +479,67 @@
             "bearer": []
           }
         ],
-        "summary": "Start a scan. Not available in this phase.",
+        "summary": "Start a scanned card and an OCR job.",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/v1/scans/{id}/upload-url": {
+      "post": {
+        "operationId": "ScansController_uploadUrl",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a pending original and a five-minute upload URL.",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/v1/scans/{id}/objects/{assetId}": {
+      "post": {
+        "operationId": "ScansController_storeBytes",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Store bytes when storage is the in-memory adapter.",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/v1/scans/{id}/complete": {
+      "post": {
+        "operationId": "ScansController_complete",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Verify the original checksum and continue the scan.",
         "tags": [
           "scans"
         ]
@@ -459,7 +559,47 @@
             "bearer": []
           }
         ],
-        "summary": "Scan job status. Not available in this phase.",
+        "summary": "Scan status. Poll with Retry-After while the job is running.",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/v1/scans/{id}/retry": {
+      "post": {
+        "operationId": "ScansController_retry",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retry a failed scan. A dead-lettered scan stays failed.",
+        "tags": [
+          "scans"
+        ]
+      }
+    },
+    "/v1/scans/{id}/confirm": {
+      "post": {
+        "operationId": "ScansController_confirm",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save the corrected draft as the card's first version.",
         "tags": [
           "scans"
         ]

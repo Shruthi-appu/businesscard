@@ -46,6 +46,19 @@ export class S3ObjectStorage implements ObjectStorage {
     );
   }
 
+  async getObject(key: string): Promise<Buffer | null> {
+    try {
+      const result = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+      if (!result.Body) return null;
+      return Buffer.from(await result.Body.transformToByteArray());
+    } catch (error) {
+      if (isNotFound(error)) return null;
+      throw error;
+    }
+  }
+
   async headObject(key: string): Promise<StoredObjectHead | null> {
     try {
       const head = await this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));

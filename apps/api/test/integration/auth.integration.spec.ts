@@ -251,8 +251,6 @@ describe("phase 1 auth and empty wallet", () => {
     const created = await register(app, "skeleton@example.com");
     const token = (created.body as AuthBody).accessToken;
     const routes: Array<[string, string]> = [
-      ["post", "/v1/assets/presign"],
-      ["post", "/v1/scans"],
       ["post", "/v1/cards/00000000-0000-4000-8000-000000000001/shares"],
       ["post", "/v1/exchange-sessions"],
       ["patch", "/v1/me"],
@@ -269,6 +267,12 @@ describe("phase 1 auth and empty wallet", () => {
       expect(response.status).toBe(501);
       expect(response.body.code).toBe("not_implemented");
     }
+    const emptyAsset = await request(app.getHttpServer())
+      .post("/v1/assets/presign")
+      .set("Authorization", `Bearer ${token}`)
+      .send({});
+    expect(emptyAsset.status).toBe(400);
+    expect(emptyAsset.body.code).toBe("validation_error");
     const emptyCard = await request(app.getHttpServer())
       .post("/v1/cards")
       .set("Authorization", `Bearer ${token}`)
