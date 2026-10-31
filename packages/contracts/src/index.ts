@@ -98,6 +98,42 @@ export const patchCardRequestSchema = z.object({
   title: z.string().trim().min(1).max(120).optional(),
 });
 
+export const slugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  .min(3)
+  .max(40);
+
+export const createDigitalCardRequestSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  templateKey: z.string().trim().min(1).max(40),
+  contacts: z.array(contactInputSchema).min(1).max(30),
+});
+
+export const designPatchRequestSchema = z.object({
+  color: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/),
+  typeScale: z.enum(["sm", "md", "lg"]),
+  logoAssetId: z.uuid().nullable().optional(),
+  photoAssetId: z.uuid().nullable().optional(),
+  frontHeadline: z.string().trim().max(80).optional(),
+  frontSubline: z.string().trim().max(120).optional(),
+  backNote: z.string().trim().max(400).optional(),
+});
+
+export const publishCardRequestSchema = z.object({
+  slug: slugSchema,
+  visibility: z.enum(["public", "unlisted"]),
+});
+
+export const exportCardRequestSchema = z.object({
+  format: z.enum(["qr", "png", "pdf", "vcf"]),
+});
+
 export const cardListQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
   filter: z.enum(["all", "favourites", "manual", "created", "scanned", "received"]).optional(),
@@ -164,6 +200,10 @@ export type CardListResponse = z.infer<typeof cardListResponseSchema>;
 export type CreateCardRequest = z.infer<typeof createCardRequestSchema>;
 export type ReplaceVersionRequest = z.infer<typeof replaceVersionRequestSchema>;
 export type PatchCardRequest = z.infer<typeof patchCardRequestSchema>;
+export type CreateDigitalCardRequest = z.infer<typeof createDigitalCardRequestSchema>;
+export type DesignPatchRequest = z.infer<typeof designPatchRequestSchema>;
+export type PublishCardRequest = z.infer<typeof publishCardRequestSchema>;
+export type ExportCardRequest = z.infer<typeof exportCardRequestSchema>;
 export type ContactInput = z.infer<typeof contactInputSchema>;
 export type AddressInput = z.infer<typeof addressInputSchema>;
 export type SocialInput = z.infer<typeof socialInputSchema>;

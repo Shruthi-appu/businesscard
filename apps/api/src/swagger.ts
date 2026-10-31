@@ -4,7 +4,7 @@ export function swaggerConfig() {
   return new DocumentBuilder()
     .setTitle("Softxu API")
     .setDescription(
-      "Phase 1 foundation. Register, sign in, refresh, log out, read the signed-in profile, and list an empty wallet. Cards, assets, scans, shares, and exchange respond with 501 until a later phase.",
+      "Accounts, a manual wallet, mock scanning, and digital cards. Shares, exchange, and profile edits respond with 501 until a later phase.",
     )
     .setVersion("0.1.0")
     .addServer("http://localhost:3001", "Local API")
