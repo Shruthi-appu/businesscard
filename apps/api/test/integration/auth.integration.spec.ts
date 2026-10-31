@@ -251,8 +251,6 @@ describe("phase 1 auth and empty wallet", () => {
     const created = await register(app, "skeleton@example.com");
     const token = (created.body as AuthBody).accessToken;
     const routes: Array<[string, string]> = [
-      ["post", "/v1/cards"],
-      ["get", "/v1/cards/00000000-0000-4000-8000-000000000001"],
       ["post", "/v1/assets/presign"],
       ["post", "/v1/scans"],
       ["post", "/v1/cards/00000000-0000-4000-8000-000000000001/shares"],
@@ -271,6 +269,17 @@ describe("phase 1 auth and empty wallet", () => {
       expect(response.status).toBe(501);
       expect(response.body.code).toBe("not_implemented");
     }
+    const emptyCard = await request(app.getHttpServer())
+      .post("/v1/cards")
+      .set("Authorization", `Bearer ${token}`)
+      .send({});
+    expect(emptyCard.status).toBe(400);
+    expect(emptyCard.body.code).toBe("validation_error");
+    const missingCard = await request(app.getHttpServer())
+      .get("/v1/cards/00000000-0000-4000-8000-000000000001")
+      .set("Authorization", `Bearer ${token}`);
+    expect(missingCard.status).toBe(404);
+    expect(missingCard.body.code).toBe("not_found");
     const oidc = await request(app.getHttpServer()).get("/v1/auth/oidc/start");
     expect(oidc.status).toBe(501);
     expect(oidc.body.code).toBe("identity_provider_unconfigured");

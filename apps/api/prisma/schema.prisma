@@ -41,6 +41,12 @@ model User {
   refreshTokens   RefreshToken[]
   auditLogs       AuditLog[]
   idempotencyKeys IdempotencyKey[]
+  cards           BusinessCard[]
+  tags            CardTag[]
+  walletEntries   WalletEntry[]
+  notes           ContactNote[]
+  reminders       Reminder[]
+  networkingEvents NetworkingEvent[]
 
   @@unique([identityProvider, identitySubject])
   @@map("users")
@@ -112,4 +118,296 @@ model IdempotencyKey {
   @@unique([userId, key])
   @@index([createdAt])
   @@map("idempotency_keys")
+}
+
+enum CardType {
+  scanned
+  created
+  manual
+
+  @@map("card_type")
+}
+
+enum CardStatus {
+  draft
+  active
+  archived
+
+  @@map("card_status")
+}
+
+enum CardVisibility {
+  private
+  unlisted
+  public
+
+  @@map("card_visibility")
+}
+
+enum ContactKind {
+  name
+  designation
+  company
+  phone
+  email
+  website
+
+  @@map("contact_kind")
+}
+
+enum WhatsappState {
+  unknown
+  yes
+  no
+
+  @@map("whatsapp_state")
+}
+
+enum FieldSource {
+  ocr
+  user
+
+  @@map("field_source")
+}
+
+enum WalletOrigin {
+  owned
+  received
+
+  @@map("wallet_origin")
+}
+
+enum WalletSource {
+  scanned
+  created
+  received_qr
+  received_nearby
+  received_nfc
+  received_sms
+  received_link
+  received_email
+  manual
+
+  @@map("wallet_source")
+}
+
+enum ReminderStatus {
+  scheduled
+  done
+  cancelled
+
+  @@map("reminder_status")
+}
+
+enum HistoryEventType {
+  saved
+  exchanged
+  shared
+  note
+  reminder_set
+  exported
+
+  @@map("history_event_type")
+}
+
+model BusinessCard {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerUserId     String         @map("owner_user_id") @db.Uuid
+  title           String
+  cardType        CardType       @map("card_type")
+  status          CardStatus     @default(active)
+  visibility      CardVisibility @default(private)
+  publicSlug      String?        @unique @map("public_slug")
+  activeVersionId String?        @unique @map("active_version_id") @db.Uuid
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  owner         User          @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  activeVersion CardVersion?  @relation("ActiveCardVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
+  versions      CardVersion[] @relation("CardVersions")
+  walletEntries WalletEntry[]
+
+  @@index([ownerUserId, updatedAt])
+  @@map("business_cards")
+}
+
+model CardVersion {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cardId          String   @map("card_id") @db.Uuid
+  versionNumber   Int      @map("version_number")
+  designConfig    Json?    @map("design_config") @db.JsonB
+  verifiedAt      DateTime? @map("verified_at") @db.Timestamptz
+  createdByUserId String   @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  card          BusinessCard    @relation("CardVersions", fields: [cardId], references: [id], onDelete: Cascade)
+  activeFor     BusinessCard?   @relation("ActiveCardVersion")
+  contacts      CardContact[]
+  socialLinks   CardSocialLink[]
+  addresses     CardAddress[]
+
+  @@unique([cardId, versionNumber])
+  @@map("card_versions")
+}
+
+model CardContact {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cardVersionId    String        @map("card_version_id") @db.Uuid
+  kind             ContactKind
+  label            String?
+  valueRaw         String        @map("value_raw")
+  valueNormalized  String?       @map("value_normalized")
+  whatsappState    WhatsappState @default(unknown) @map("whatsapp_state")
+  isPrimary        Boolean       @default(false) @map("is_primary")
+  isPublic         Boolean       @default(false) @map("is_public")
+  confidence       Decimal?      @db.Decimal(5, 4)
+  source           FieldSource   @default(user)
+  verifiedAt       DateTime?     @map("verified_at") @db.Timestamptz
+  ocrSpan          String?       @map("ocr_span")
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  version CardVersion @relation(fields: [cardVersionId], references: [id], onDelete: Cascade)
+
+  @@index([valueNormalized])
+  @@map("card_contacts")
+}
+
+model CardSocialLink {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cardVersionId String      @map("card_version_id") @db.Uuid
+  platform      String
+  url           String
+  isPublic      Boolean     @default(false) @map("is_public")
+  confidence    Decimal?    @db.Decimal(5, 4)
+  source        FieldSource @default(user)
+  verifiedAt    DateTime?   @map("verified_at") @db.Timestamptz
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  version CardVersion @relation(fields: [cardVersionId], references: [id], onDelete: Cascade)
+
+  @@map("card_social_links")
+}
+
+model CardAddress {
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cardVersionId    String      @map("card_version_id") @db.Uuid
+  formattedAddress String      @map("formatted_address")
+  latitude         Decimal?    @db.Decimal(9, 6)
+  longitude        Decimal?    @db.Decimal(9, 6)
+  isPublic         Boolean     @default(false) @map("is_public")
+  confidence       Decimal?    @db.Decimal(5, 4)
+  source           FieldSource @default(user)
+  verifiedAt       DateTime?   @map("verified_at") @db.Timestamptz
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  version CardVersion @relation(fields: [cardVersionId], references: [id], onDelete: Cascade)
+
+  @@map("card_addresses")
+}
+
+model CardTag {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  links CardTagLink[]
+
+  @@unique([userId, name])
+  @@map("card_tags")
+}
+
+model WalletEntry {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String       @map("user_id") @db.Uuid
+  origin            WalletOrigin
+  cardId            String?      @map("card_id") @db.Uuid
+  snapshotId        String?      @map("snapshot_id") @db.Uuid
+  source            WalletSource
+  exchangeSessionId String?      @map("exchange_session_id") @db.Uuid
+  shareId           String?      @map("share_id") @db.Uuid
+  isFavourite       Boolean      @default(false) @map("is_favourite")
+  savedAt           DateTime     @default(now()) @map("saved_at") @db.Timestamptz
+  deletedAt         DateTime?    @map("deleted_at") @db.Timestamptz
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  card     BusinessCard?     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  tags     CardTagLink[]
+  notes    ContactNote[]
+  reminders Reminder[]
+  events   NetworkingEvent[]
+
+  @@index([userId, savedAt])
+  @@index([userId, isFavourite])
+  @@map("wallet_entries")
+}
+
+model CardTagLink {
+  walletEntryId String   @map("wallet_entry_id") @db.Uuid
+  tagId         String   @map("tag_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  walletEntry WalletEntry @relation(fields: [walletEntryId], references: [id], onDelete: Cascade)
+  tag         CardTag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([walletEntryId, tagId])
+  @@map("card_tag_links")
+}
+
+model ContactNote {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  walletEntryId String   @map("wallet_entry_id") @db.Uuid
+  body          String
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  walletEntry WalletEntry @relation(fields: [walletEntryId], references: [id], onDelete: Cascade)
+
+  @@index([walletEntryId])
+  @@map("contact_notes")
+}
+
+model Reminder {
+  id            String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String         @map("user_id") @db.Uuid
+  walletEntryId String         @map("wallet_entry_id") @db.Uuid
+  remindAt      DateTime       @map("remind_at") @db.Timestamptz
+  status        ReminderStatus @default(scheduled)
+  note          String?
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  walletEntry WalletEntry @relation(fields: [walletEntryId], references: [id], onDelete: Cascade)
+
+  @@index([status, remindAt])
+  @@map("reminders")
+}
+
+model NetworkingEvent {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String           @map("user_id") @db.Uuid
+  walletEntryId String           @map("wallet_entry_id") @db.Uuid
+  eventType     HistoryEventType @map("event_type")
+  occurredAt    DateTime         @default(now()) @map("occurred_at") @db.Timestamptz
+  metadata      Json             @db.JsonB
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  walletEntry WalletEntry @relation(fields: [walletEntryId], references: [id], onDelete: Cascade)
+
+  @@index([walletEntryId, occurredAt])
+  @@map("networking_events")
 }

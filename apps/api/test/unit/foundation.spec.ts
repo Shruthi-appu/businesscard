@@ -13,6 +13,7 @@ import {
 import { ApiException } from "../../src/common/api.exception";
 import { sanitizeAuditMetadata } from "../../src/modules/audit/audit.service";
 import { hashPassword, verifyPassword } from "../../src/modules/auth/password";
+import { normalizeContacts, normalizeUrl } from "../../src/modules/cards/normalize";
 import { RateLimitService } from "../../src/modules/auth/rate-limit.service";
 import { hashRefreshToken, newRefreshToken } from "../../src/modules/auth/tokens";
 import { createJobQueue } from "../../src/queue/create-job-queue";
@@ -45,14 +46,26 @@ describe("contracts", () => {
     expect(loginRequestSchema.safeParse({ email: "a@b.co", password: "" }).success).toBe(false);
   });
 
-  it("accepts only an empty card list in this phase", () => {
+  it("accepts an empty wallet and a card list item", () => {
     expect(cardListResponseSchema.safeParse({ items: [], nextCursor: null }).success).toBe(true);
     expect(
       cardListResponseSchema.safeParse({
-        items: [{ id: "00000000-0000-4000-8000-000000000001" }],
+        items: [
+          {
+            id: "00000000-0000-4000-8000-000000000001",
+            walletEntryId: "00000000-0000-4000-8000-000000000002",
+            title: "Ada",
+            cardType: "manual",
+            source: "manual",
+            isFavourite: false,
+            headline: "Ada Lovelace",
+            company: null,
+            savedAt: "2026-10-31T00:00:00.000Z",
+          },
+        ],
         nextCursor: null,
       }).success,
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("selects mock adapters when credentials are empty", () => {
@@ -84,6 +97,19 @@ describe("contracts", () => {
   it("names the OIDC failure", () => {
     expect(oidcUnavailableCode(false)).toBe("identity_provider_unconfigured");
     expect(oidcUnavailableCode(true)).toBe("not_implemented");
+  });
+});
+
+describe("manual card fields", () => {
+  it("normalises email and rejects a script URL", () => {
+    const contacts = normalizeContacts([
+      { kind: "email", value: "Ada@Example.com" },
+      { kind: "phone", value: "+1 (415) 555-0100" },
+    ]);
+    expect(contacts[0]?.valueNormalized).toBe("ada@example.com");
+    expect(contacts[1]?.valueNormalized).toBe("+14155550100");
+    expect(normalizeUrl("javascript:alert(1)")).toBeNull();
+    expect(normalizeUrl("https://User:pass@Example.com/path")).toBeNull();
   });
 });
 

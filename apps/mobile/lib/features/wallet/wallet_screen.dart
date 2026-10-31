@@ -58,11 +58,15 @@ class WalletScreen extends ConsumerWidget {
                 Text('Signed in as $name'),
                 const SizedBox(height: 24),
                 Text(
-                  snapshot.empty ? 'No cards yet' : 'No cards yet',
+                  snapshot.empty ? 'No cards yet' : snapshot.titles.first,
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 8),
-                const Text('Cards you create or receive will show up here.'),
+                Text(
+                  snapshot.empty
+                      ? 'Cards you create or receive will show up here.'
+                      : snapshot.titles.join(', '),
+                ),
                 const Spacer(),
                 OutlinedButton(
                   onPressed: () async {
