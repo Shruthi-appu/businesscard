@@ -33,7 +33,13 @@ export function configureApp(app: INestApplication): void {
     origin: env.values.PUBLIC_WEB_ORIGIN,
     credentials: true,
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Authorization", "Content-Type", "Idempotency-Key", "X-Request-Id"],
+    allowedHeaders: [
+      "Authorization",
+      "Content-Type",
+      "Idempotency-Key",
+      "X-Request-Id",
+      "X-Share-Pin",
+    ],
   });
   app.useGlobalFilters(new ProblemFilter());
   if (env.values.swaggerEnabled) {

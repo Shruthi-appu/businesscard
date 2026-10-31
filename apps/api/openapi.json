@@ -749,7 +749,7 @@
             "bearer": []
           }
         ],
-        "summary": "Create a share link. Not available in this phase.",
+        "summary": "Create a scoped share link for one card version.",
         "tags": [
           "shares"
         ]
@@ -767,7 +767,7 @@
             "bearer": []
           }
         ],
-        "summary": "List share links. Not available in this phase.",
+        "summary": "List share links for a card the caller owns.",
         "tags": [
           "shares"
         ]
@@ -778,7 +778,7 @@
         "operationId": "SharesController_revoke",
         "parameters": [],
         "responses": {
-          "201": {
+          "200": {
             "description": ""
           }
         },
@@ -787,7 +787,22 @@
             "bearer": []
           }
         ],
-        "summary": "Revoke a share link. Not available in this phase.",
+        "summary": "Revoke a share link.",
+        "tags": [
+          "shares"
+        ]
+      }
+    },
+    "/v1/public/shares/{token}/vcard": {
+      "get": {
+        "operationId": "SharesController_vcard",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Download a vCard of the fields included in a share.",
         "tags": [
           "shares"
         ]
@@ -802,7 +817,7 @@
             "description": ""
           }
         },
-        "summary": "Public share preview. Not available in this phase.",
+        "summary": "Preview the fields included in a share link.",
         "tags": [
           "shares"
         ]
@@ -822,7 +837,7 @@
             "bearer": []
           }
         ],
-        "summary": "Claim a share into the wallet. Not available in this phase.",
+        "summary": "Save the shared fields into the caller's wallet after consent.",
         "tags": [
           "shares"
         ]
@@ -946,7 +961,7 @@
   },
   "info": {
     "title": "Softxu API",
-    "description": "Accounts, a manual wallet, mock scanning, and digital cards. Shares, exchange, and profile edits respond with 501 until a later phase.",
+    "description": "Accounts, a manual wallet, mock scanning, digital cards, and share links. Exchange and profile edits respond with 501 until a later phase.",
     "version": "0.1.0",
     "contact": {}
   },

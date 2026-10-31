@@ -9,5 +9,6 @@ import { RateLimitService } from "./rate-limit.service";
   imports: [AuditModule],
   controllers: [AuthController],
   providers: [AuthService, RateLimitService],
+  exports: [RateLimitService],
 })
 export class AuthModule {}
