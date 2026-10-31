@@ -1,19 +1,19 @@
 # businesscard
 
-Softxu is a business card wallet and networking platform for Softxu Technologies. This repository is the modular monolith described in the architecture plan: a NestJS API, a Next.js portal, a Flutter app, and a Python image worker. Phase 1 is the foundation. Later phases are not in this tree.
+Softxu is a business card wallet and networking platform for Softxu Technologies. This repository is the modular monolith described in the architecture plan: a NestJS API, a Next.js portal, a Flutter app, and a Python image worker. Phase 1 is accounts and an empty wallet. Phase 2 adds manual cards. Later phases are not in this tree.
 
 ## What works
 
-A new person can register, sign in, and open an empty wallet on the web app and on the Flutter app. The API checks the access token on every protected route, so one account cannot read another account's profile. Refresh tokens rotate and are stored only as an HMAC. Passwords are Argon2id hashes.
+A new person can register, sign in, and open a wallet on the web app and on the Flutter app. On the web they can add a card, edit it, search, mark a favourite, and tag it. The Flutter wallet lists card titles. The API checks the access token on every protected route, so one account cannot read another account's card or profile. Refresh tokens rotate and are stored only as an HMAC. Passwords are Argon2id hashes.
 
 Local infrastructure is Docker Compose: Postgres 16, Redis 7, MinIO, and ElasticMQ. Nothing here provisions Fly or AWS, and there is no Terraform.
 
-| Surface                                                   | Phase 1                                                                   |
+| Surface                                                   | Status                                                                    |
 | --------------------------------------------------------- | ------------------------------------------------------------------------- |
 | `POST /v1/auth/register`, `/login`, `/refresh`, `/logout` | Working                                                                   |
 | `GET /v1/me`                                              | The caller only                                                           |
-| `GET /v1/cards`                                           | Authenticated empty list                                                  |
-| Cards, assets, scans, shares, exchange, `PATCH /v1/me`    | `501` `not_implemented`                                                   |
+| `GET /v1/cards`, `POST /v1/cards`                         | Manual wallet: create, search, favourites, tags                           |
+| Assets, scans, shares, exchange, `PATCH /v1/me`           | `501` `not_implemented`                                                   |
 | `GET /v1/auth/oidc/*`                                     | `501` `identity_provider_unconfigured` until `OIDC_*` is set              |
 | `GET /health`                                             | Postgres, Redis, storage, and queue                                       |
 | `GET /docs`                                               | Swagger, off when `NODE_ENV=production`                                   |
@@ -71,8 +71,8 @@ pnpm test:mobile
 
 GitHub Actions runs the TypeScript typecheck, lint, unit tests, and integration tests against Postgres and Redis service containers, plus Ruff, pytest, `dart analyze`, and `flutter test`.
 
-The first migration only creates `users`, `user_profiles`, `refresh_tokens`, `audit_logs`, and `idempotency_keys`. It is additive. If it has to be undone before any later migration, drop those tables or restore a database snapshot. There is no down migration.
+The first migration creates `users`, `user_profiles`, `refresh_tokens`, `audit_logs`, and `idempotency_keys`. The second adds the manual wallet tables. Both are additive. If they have to be undone before any later migration, restore a database snapshot. There is no down migration.
 
 ## Out of scope
 
-Phases 2–7 are not started: card fields, manual editing, camera, OCR, templates, public card pages, sharing, QR exchange, BLE, NFC, account export, and a hosted deploy. Fly, AWS, and Terraform are not part of this change. `avatar_asset_id` has no foreign key until the asset table exists.
+Phase 2 adds a manual wallet: create, edit a new version, search, favourites, tags, notes, and reminders. One user cannot read another user's card. Phases 3–7 are not started: camera, OCR, templates, public card pages, sharing, QR exchange, BLE, NFC, account export, and a hosted deploy. Fly, AWS, and Terraform are not part of this change. `avatar_asset_id` has no foreign key until the asset table exists.

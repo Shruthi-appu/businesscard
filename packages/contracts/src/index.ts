@@ -59,10 +59,73 @@ export const meResponseSchema = z.object({
   status: z.enum(["active", "disabled", "pending_deletion"]),
 });
 
-/** Phase 1 always returns an empty list. Later phases widen `items`. */
+const contactKindSchema = z.enum(["name", "designation", "company", "phone", "email", "website"]);
+
+export const contactInputSchema = z.object({
+  kind: contactKindSchema,
+  label: z.string().trim().max(40).optional(),
+  value: z.string().trim().min(1).max(300),
+  isPublic: z.boolean().optional(),
+  isPrimary: z.boolean().optional(),
+  whatsappState: z.enum(["unknown", "yes", "no"]).optional(),
+});
+
+export const addressInputSchema = z.object({
+  formattedAddress: z.string().trim().min(1).max(400),
+  isPublic: z.boolean().optional(),
+});
+
+export const socialInputSchema = z.object({
+  platform: z.string().trim().min(1).max(40),
+  url: z.string().trim().min(1).max(500),
+  isPublic: z.boolean().optional(),
+});
+
+export const createCardRequestSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  contacts: z.array(contactInputSchema).min(1).max(30),
+  addresses: z.array(addressInputSchema).max(5).optional(),
+  socials: z.array(socialInputSchema).max(10).optional(),
+});
+
+export const replaceVersionRequestSchema = z.object({
+  contacts: z.array(contactInputSchema).min(1).max(30),
+  addresses: z.array(addressInputSchema).max(5).optional(),
+  socials: z.array(socialInputSchema).max(10).optional(),
+});
+
+export const patchCardRequestSchema = z.object({
+  title: z.string().trim().min(1).max(120).optional(),
+});
+
+export const cardListQuerySchema = z.object({
+  q: z.string().trim().max(120).optional(),
+  filter: z.enum(["all", "favourites", "manual", "created", "scanned", "received"]).optional(),
+  cursor: z.string().max(200).optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+});
+
+export const cardListItemSchema = z.object({
+  id: z.uuid(),
+  walletEntryId: z.uuid(),
+  title: z.string(),
+  cardType: z.enum(["scanned", "created", "manual"]),
+  source: z.string(),
+  isFavourite: z.boolean(),
+  headline: z.string().nullable(),
+  company: z.string().nullable(),
+  savedAt: z.string(),
+});
+
 export const cardListResponseSchema = z.object({
-  items: z.array(z.object({ id: z.uuid() })).max(0),
-  nextCursor: z.null(),
+  items: z.array(cardListItemSchema),
+  nextCursor: z.string().nullable(),
+});
+
+export const duplicateWarningSchema = z.object({
+  cardId: z.uuid(),
+  kind: z.enum(["phone", "email"]),
+  valueNormalized: z.string(),
 });
 
 export const fieldErrorSchema = z.object({
@@ -98,6 +161,12 @@ export type AuthUser = z.infer<typeof authUserSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;
 export type MeResponse = z.infer<typeof meResponseSchema>;
 export type CardListResponse = z.infer<typeof cardListResponseSchema>;
+export type CreateCardRequest = z.infer<typeof createCardRequestSchema>;
+export type ReplaceVersionRequest = z.infer<typeof replaceVersionRequestSchema>;
+export type PatchCardRequest = z.infer<typeof patchCardRequestSchema>;
+export type ContactInput = z.infer<typeof contactInputSchema>;
+export type AddressInput = z.infer<typeof addressInputSchema>;
+export type SocialInput = z.infer<typeof socialInputSchema>;
 export type Problem = z.infer<typeof problemSchema>;
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 

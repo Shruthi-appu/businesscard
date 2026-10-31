@@ -124,6 +124,33 @@ export async function loadMe(token: string): Promise<MeResponse> {
   return parseWith(meResponseSchema, await apiSend("/v1/me", { token }));
 }
 
-export async function loadCards(token: string): Promise<CardListResponse> {
-  return parseWith(cardListResponseSchema, await apiSend("/v1/cards", { token }));
+export async function loadCards(
+  token: string,
+  query = "",
+  filter = "all",
+): Promise<CardListResponse> {
+  const params = new URLSearchParams();
+  if (query) params.set("q", query);
+  if (filter && filter !== "all") params.set("filter", filter);
+  const suffix = params.toString();
+  const path = suffix ? `/v1/cards?${suffix}` : "/v1/cards";
+  return parseWith(cardListResponseSchema, await apiSend(path, { token }));
+}
+
+export async function createCard(
+  token: string,
+  input: { title: string; name: string; email: string; phone: string; company: string },
+): Promise<{ id: string }> {
+  const contacts = [
+    input.name ? { kind: "name", value: input.name, isPrimary: true } : null,
+    input.email ? { kind: "email", value: input.email } : null,
+    input.phone ? { kind: "phone", value: input.phone } : null,
+    input.company ? { kind: "company", value: input.company } : null,
+  ].filter((row) => row !== null);
+  const body = await apiSend("/v1/cards", {
+    method: "POST",
+    token,
+    body: JSON.stringify({ title: input.title, contacts }),
+  });
+  return body as { id: string };
 }

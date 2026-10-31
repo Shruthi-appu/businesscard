@@ -21,10 +21,12 @@ class Session {
 }
 
 class WalletSnapshot {
-  const WalletSnapshot({required this.displayName, required this.empty});
+  const WalletSnapshot({required this.displayName, required this.titles});
 
   final String displayName;
-  final bool empty;
+  final List<String> titles;
+
+  bool get empty => titles.isEmpty;
 }
 
 class AuthApi {
@@ -77,9 +79,17 @@ class AuthApi {
       expected: 200,
     );
     final items = cards['items'];
+    final titles = <String>[];
+    if (items is List) {
+      for (final item in items) {
+        if (item is Map && item['title'] is String) {
+          titles.add(item['title'] as String);
+        }
+      }
+    }
     return WalletSnapshot(
       displayName: me['displayName'] as String? ?? 'Member',
-      empty: items is List && items.isEmpty,
+      titles: titles,
     );
   }
 
