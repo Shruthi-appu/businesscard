@@ -3,6 +3,8 @@ import { randomUUID } from "crypto";
 import type { NextFunction, Response } from "express";
 import { Logger } from "@nestjs/common";
 
+import { emitHttpSpan } from "../telemetry";
+
 export type AccessPrincipal = {
   id: string;
   role: "user" | "admin";
@@ -40,9 +42,11 @@ export function requestContextMiddleware(
   res.setHeader("x-request-id", requestId);
   const started = Date.now();
   res.on("finish", () => {
+    const path = redactSharePath(req.path);
     logger.log(
-      `${req.method} ${redactSharePath(req.path)} ${res.statusCode} ${Date.now() - started}ms requestId=${requestId}`,
+      `${req.method} ${path} ${res.statusCode} ${Date.now() - started}ms requestId=${requestId}`,
     );
+    emitHttpSpan({ method: req.method, path, statusCode: res.statusCode });
   });
   next();
 }

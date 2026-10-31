@@ -11,6 +11,7 @@ import { JOB_QUEUE } from "../../queue/job-queue";
 import type { ObjectStorage } from "../../storage/object-storage";
 import { OBJECT_STORAGE } from "../../storage/object-storage";
 import { AuditService } from "../audit/audit.service";
+import { RateLimitService } from "../auth/rate-limit.service";
 import { normalizeContacts } from "../cards/normalize";
 import { IdempotencyService } from "../idempotency/idempotency.service";
 import { EnvService } from "../../config/env.service";
@@ -30,6 +31,7 @@ export class ScansService {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(IdempotencyService) private readonly idempotency: IdempotencyService,
     @Inject(EnvService) private readonly env: EnvService,
+    @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
   ) {}
 
   async create(userId: string, requestId: string, idempotencyKey?: string) {
@@ -83,6 +85,12 @@ export class ScansService {
       checksumSha256: string;
     },
   ) {
+    await this.rateLimit.consume(
+      `presign:${userId}`,
+      this.env.values.RATE_LIMIT_PRESIGN_MAX,
+      this.env.values.RATE_LIMIT_PRESIGN_WINDOW_SECONDS,
+      "Uploads are temporarily unavailable",
+    );
     const job = await this.job(userId, scanId);
     if (job.status === "completed" || job.status === "cancelled") {
       throw new ApiException(409, "conflict", "This scan is already finished");

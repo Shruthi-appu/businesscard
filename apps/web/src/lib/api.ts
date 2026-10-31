@@ -137,6 +137,64 @@ export async function loadCards(
   return parseWith(cardListResponseSchema, await apiSend(path, { token }));
 }
 
+export type JobCounts = {
+  ocr: Record<string, number>;
+  exports: Record<string, number>;
+  pendingDeletion: number;
+};
+
+export async function exportAccount(token: string): Promise<{ id: string; status: string }> {
+  const body = await apiSend("/v1/me/export", {
+    method: "POST",
+    token,
+    headers: { "idempotency-key": crypto.randomUUID() },
+  });
+  return body as { id: string; status: string };
+}
+
+export async function downloadExport(token: string, id: string): Promise<Blob> {
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1/me/exports/${id}/file`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new ApiError(
+      { type: "about:blank", title: "Network failure", status: 0, code: "network_failure" },
+      true,
+    );
+  }
+  if (!response.ok) {
+    const body = await parseBody(response);
+    const parsed = problemSchema.safeParse(body);
+    throw new ApiError(
+      parsed.success
+        ? parsed.data
+        : {
+            type: "about:blank",
+            title: "Request failed",
+            status: response.status,
+            code: "request_error",
+          },
+    );
+  }
+  return response.blob();
+}
+
+export async function deleteAccount(token: string): Promise<void> {
+  await apiSend("/v1/me/delete", {
+    method: "POST",
+    token,
+    headers: { "idempotency-key": crypto.randomUUID() },
+    body: JSON.stringify({ confirm: true }),
+  });
+}
+
+export async function loadJobCounts(token: string): Promise<JobCounts> {
+  const body = await apiSend("/v1/admin/jobs", { token });
+  return body as JobCounts;
+}
+
 export async function createCard(
   token: string,
   input: { title: string; name: string; email: string; phone: string; company: string },

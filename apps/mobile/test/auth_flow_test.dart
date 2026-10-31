@@ -6,7 +6,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:softxu/app.dart';
+import 'package:softxu/core/auth_api.dart';
 import 'package:softxu/core/providers.dart';
+import 'package:softxu/features/wallet/wallet_cache.dart';
+import 'package:softxu/features/wallet/wallet_controller.dart';
 
 void main() {
   setUp(() {
@@ -125,6 +128,54 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await tester.pumpAndSettle();
     expect(find.textContaining('do not have access'), findsOneWidget);
+  });
+
+  testWidgets('wallet shows cards saved on this device when the list fails', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          walletCacheProvider.overrideWithValue(
+            WalletCacheStore(
+              memory: {
+                '00000000-0000-4000-8000-000000000001': const WalletSnapshot(
+                  displayName: 'Ada Lovelace',
+                  titles: ['Cached card'],
+                ),
+              },
+            ),
+          ),
+          httpClientProvider.overrideWithValue(
+            _FakeClient((method, url, body) async {
+              if (url.path == '/v1/auth/login') return _authResponse(status: 200);
+              if (url.path == '/v1/me') {
+                return http.Response(
+                  jsonEncode({
+                    'id': '00000000-0000-4000-8000-000000000001',
+                    'email': 'ada@example.com',
+                    'phoneE164': null,
+                    'displayName': 'Ada Lovelace',
+                    'locale': null,
+                    'countryCode': null,
+                    'role': 'user',
+                    'status': 'active',
+                  }),
+                  200,
+                );
+              }
+              throw http.ClientException('offline');
+            }),
+          ),
+        ],
+        child: const SoftxuApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Email'), 'ada@example.com');
+    await tester.enterText(find.widgetWithText(TextField, 'Password'), 'correct-horse');
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.pumpAndSettle();
+    expect(find.text('Saved on this device. These cards may be out of date.'), findsOneWidget);
+    expect(find.textContaining('Cached card'), findsWidgets);
   });
 }
 

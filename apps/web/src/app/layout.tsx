@@ -17,8 +17,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <AuthProvider>
           <div className="shell">
+            <a className="skip" href="#main">
+              Skip to content
+            </a>
             <SiteHeader />
-            <main>{children}</main>
+            <main id="main">{children}</main>
           </div>
         </AuthProvider>
       </body>

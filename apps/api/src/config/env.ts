@@ -24,6 +24,15 @@ const envSchema = z.object({
   RATE_LIMIT_SHARE_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_EXCHANGE_MAX: z.coerce.number().int().positive().default(30),
   RATE_LIMIT_EXCHANGE_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
+  RATE_LIMIT_PRESIGN_MAX: z.coerce.number().int().positive().default(60),
+  RATE_LIMIT_PRESIGN_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
+  ACCOUNT_DELETION_GRACE_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 60 * 24 * 7),
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().default(""),
+  OTEL_EXPORTER_OTLP_HEADERS: z.string().default(""),
   SMS_PROVIDER: z.string().default(""),
   SMS_API_KEY: z.string().default(""),
   SMS_FROM: z.string().default(""),

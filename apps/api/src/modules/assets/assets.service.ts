@@ -7,6 +7,7 @@ import { EnvService } from "../../config/env.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import type { ObjectStorage } from "../../storage/object-storage";
 import { OBJECT_STORAGE } from "../../storage/object-storage";
+import { RateLimitService } from "../auth/rate-limit.service";
 
 const MAX_BYTES = 20 * 1024 * 1024;
 
@@ -16,6 +17,7 @@ export class AssetsService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
     @Inject(EnvService) private readonly env: EnvService,
+    @Inject(RateLimitService) private readonly rateLimit: RateLimitService,
   ) {}
 
   async presign(
@@ -27,6 +29,12 @@ export class AssetsService {
       checksumSha256: string;
     },
   ) {
+    await this.rateLimit.consume(
+      `presign:${userId}`,
+      this.env.values.RATE_LIMIT_PRESIGN_MAX,
+      this.env.values.RATE_LIMIT_PRESIGN_WINDOW_SECONDS,
+      "Uploads are temporarily unavailable",
+    );
     if (input.byteSize > MAX_BYTES) {
       throw new ApiException(400, "validation_error", "Validation failed", [
         { field: "byteSize", message: "Images must be 20 MB or smaller" },

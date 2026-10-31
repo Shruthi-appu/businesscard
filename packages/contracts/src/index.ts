@@ -59,6 +59,10 @@ export const meResponseSchema = z.object({
   status: z.enum(["active", "disabled", "pending_deletion"]),
 });
 
+export const deleteAccountRequestSchema = z.object({
+  confirm: z.literal(true),
+});
+
 const contactKindSchema = z.enum(["name", "designation", "company", "phone", "email", "website"]);
 
 export const contactInputSchema = z.object({
@@ -237,6 +241,7 @@ export type RefreshRequest = z.infer<typeof refreshRequestSchema>;
 export type AuthUser = z.infer<typeof authUserSchema>;
 export type AuthResponse = z.infer<typeof authResponseSchema>;
 export type MeResponse = z.infer<typeof meResponseSchema>;
+export type DeleteAccountRequest = z.infer<typeof deleteAccountRequestSchema>;
 export type CardListResponse = z.infer<typeof cardListResponseSchema>;
 export type CreateCardRequest = z.infer<typeof createCardRequestSchema>;
 export type ReplaceVersionRequest = z.infer<typeof replaceVersionRequestSchema>;
