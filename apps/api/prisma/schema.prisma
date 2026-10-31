@@ -538,3 +538,18 @@ model OcrResult {
   @@unique([ocrJobId, side])
   @@map("ocr_results")
 }
+
+model CardTemplate {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key               String
+  version           Int
+  name              String
+  layout            String
+  allowedColors     Json     @map("allowed_colors") @db.JsonB
+  allowedTypeScales Json     @map("allowed_type_scales") @db.JsonB
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([key, version])
+  @@map("card_templates")
+}

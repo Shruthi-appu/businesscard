@@ -46,6 +46,9 @@ export function WalletView({
         <Link className="button secondary" href="/wallet/scan">
           Scan a card
         </Link>
+        <Link className="button secondary" href="/wallet/create">
+          Design a card
+        </Link>
         {onSignOut ? (
           <button type="button" className="secondary" onClick={onSignOut}>
             Sign out

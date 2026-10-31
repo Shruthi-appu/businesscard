@@ -385,6 +385,136 @@
         ]
       }
     },
+    "/v1/templates": {
+      "get": {
+        "operationId": "DigitalCardsController_templates",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "List versioned card templates.",
+        "tags": [
+          "digital-cards"
+        ]
+      }
+    },
+    "/v1/digital-cards": {
+      "post": {
+        "operationId": "DigitalCardsController_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a digital card from a template.",
+        "tags": [
+          "digital-cards"
+        ]
+      }
+    },
+    "/v1/digital-cards/{id}": {
+      "get": {
+        "operationId": "DigitalCardsController_getOne",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read a digital card the caller owns, including private fields.",
+        "tags": [
+          "digital-cards"
+        ]
+      }
+    },
+    "/v1/digital-cards/{id}/design": {
+      "patch": {
+        "operationId": "DigitalCardsController_patchDesign",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update colours, type scale, images, and front or back copy.",
+        "tags": [
+          "digital-cards"
+        ]
+      }
+    },
+    "/v1/digital-cards/{id}/publish": {
+      "post": {
+        "operationId": "DigitalCardsController_publish",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set the public slug and visibility.",
+        "tags": [
+          "digital-cards"
+        ]
+      }
+    },
+    "/v1/digital-cards/{id}/export": {
+      "post": {
+        "operationId": "DigitalCardsController_export",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Export a published card as QR, PNG, PDF, or vCard. Public fields only.",
+        "tags": [
+          "digital-cards"
+        ]
+      }
+    },
+    "/v1/public/cards/{slug}": {
+      "get": {
+        "operationId": "PublicCardsController_getOne",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Read a published card. Private fields are omitted.",
+        "tags": [
+          "public"
+        ]
+      }
+    },
     "/v1/assets/presign": {
       "post": {
         "operationId": "AssetsController_presign",
@@ -816,7 +946,7 @@
   },
   "info": {
     "title": "Softxu API",
-    "description": "Phase 1 foundation. Register, sign in, refresh, log out, read the signed-in profile, and list an empty wallet. Cards, assets, scans, shares, and exchange respond with 501 until a later phase.",
+    "description": "Accounts, a manual wallet, mock scanning, and digital cards. Shares, exchange, and profile edits respond with 501 until a later phase.",
     "version": "0.1.0",
     "contact": {}
   },
