@@ -46,7 +46,8 @@ class WalletScreen extends ConsumerWidget {
             onAction: () => ref.invalidate(walletProvider),
           );
         }
-        final snapshot = (load as WalletReady).snapshot;
+        final ready = load as WalletReady;
+        final snapshot = ready.snapshot;
         final name = snapshot.displayName;
         return Scaffold(
           appBar: AppBar(title: const Text('Wallet')),
@@ -56,6 +57,10 @@ class WalletScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Signed in as $name'),
+                if (ready.fromCache) ...[
+                  const SizedBox(height: 12),
+                  const Text('Saved on this device. These cards may be out of date.'),
+                ],
                 const SizedBox(height: 24),
                 Text(
                   snapshot.empty ? 'No cards yet' : snapshot.titles.first,

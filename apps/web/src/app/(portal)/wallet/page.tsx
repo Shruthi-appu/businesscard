@@ -3,9 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AccountActions } from "@/components/account-actions";
 import { WalletView, type WalletCard } from "@/components/wallet-view";
 import { ApiError, loadCards, loadMe, logoutSession } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { readWalletCache, writeWalletCache } from "@/lib/wallet-cache";
 
 type View = "loading" | "empty" | "ready" | "denied" | "network";
 
@@ -18,6 +20,7 @@ export default function WalletPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [signOutError, setSignOutError] = useState<string | null>(null);
+  const [offlineCopy, setOfflineCopy] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -37,13 +40,22 @@ export default function WalletPage() {
         Promise.all([loadMe(token), loadCards(token, query, filter)])
           .then(([me, result]) => {
             if (cancelled) return;
+            setOfflineCopy(null);
             setDisplayName(me.displayName);
             setCards(result.items);
+            if (!query && filter === "all" && auth.user) {
+              writeWalletCache({
+                userId: auth.user.id,
+                displayName: me.displayName,
+                cards: result.items,
+              });
+            }
             setView(result.items.length === 0 ? "empty" : "ready");
           })
           .catch((error: unknown) => {
             if (cancelled) return;
             if (error instanceof ApiError && error.status === 403) {
+              setOfflineCopy(null);
               setView("denied");
               return;
             }
@@ -51,6 +63,21 @@ export default function WalletPage() {
               auth.clearSession();
               return;
             }
+            const cached = readWalletCache();
+            if (
+              cached &&
+              auth.user &&
+              cached.userId === auth.user.id &&
+              !query &&
+              filter === "all"
+            ) {
+              setDisplayName(cached.displayName);
+              setCards(cached.cards);
+              setOfflineCopy("Showing cards saved on this device.");
+              setView(cached.cards.length === 0 ? "empty" : "ready");
+              return;
+            }
+            setOfflineCopy(null);
             setView("network");
           });
       },
@@ -77,6 +104,7 @@ export default function WalletPage() {
         onQuery={setQuery}
         onFilter={setFilter}
         signOutError={signOutError}
+        offlineCopy={offlineCopy}
         onRetry={() => {
           if (auth.status === "network") auth.retry();
           setReloadKey((value) => value + 1);
@@ -92,6 +120,15 @@ export default function WalletPage() {
           }
         }}
       />
+      {auth.accessToken && (view === "ready" || view === "empty") ? (
+        <AccountActions
+          token={auth.accessToken}
+          onDeleted={() => {
+            auth.clearSession();
+            router.replace("/login");
+          }}
+        />
+      ) : null}
     </section>
   );
 }

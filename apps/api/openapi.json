@@ -129,6 +129,106 @@
         ]
       }
     },
+    "/v1/me/export": {
+      "post": {
+        "operationId": "AccountController_exportAccount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Build a JSON export of the signed-in account and return when it is ready.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/exports/{id}": {
+      "get": {
+        "operationId": "AccountController_exportStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Export status for the signed-in account. No file bytes.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/exports/{id}/file": {
+      "get": {
+        "operationId": "AccountController_exportFile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download the signed-in account's export JSON.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/delete": {
+      "post": {
+        "operationId": "AccountController_deleteAccount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Schedule account deletion. Sign-in stops immediately. The record is scrubbed after the grace period.",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/admin/jobs": {
+      "get": {
+        "operationId": "AdminJobsController_jobs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Job status counts for an admin. No card payloads.",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/v1/cards": {
       "get": {
         "operationId": "CardsController_list",
@@ -961,7 +1061,7 @@
   },
   "info": {
     "title": "Softxu API",
-    "description": "Accounts, a manual wallet, mock scanning, digital cards, share links, and QR exchange. Profile edits respond with 501 until a later phase.",
+    "description": "Accounts, a manual wallet, mock scanning, digital cards, share links, and QR exchange. Account export and scheduled deletion are available. Profile edits respond with 501.",
     "version": "0.1.0",
     "contact": {}
   },

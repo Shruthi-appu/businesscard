@@ -1,0 +1,11 @@
+# Image worker process. It stays up and does not read the queue. This file is not deployed.
+app = "softxu-worker"
+primary_region = "bom"
+
+[build]
+  dockerfile = "apps/image-worker/Dockerfile"
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1

@@ -1,10 +1,10 @@
 # businesscard
 
-Softxu is a business card wallet and networking platform for Softxu Technologies. This repository is the modular monolith described in the architecture plan: a NestJS API, a Next.js portal, a Flutter app, and a Python image worker. Phase 1 is accounts and an empty wallet. Phase 2 adds manual cards. Phase 3 adds a scan that uses a mock reader. Phase 4 adds digital cards and a public page. Phase 5 adds a share link that expires and can be revoked. Phase 6 adds a short-lived QR exchange between two signed-in people. Later phases are not in this tree.
+Softxu is a business card wallet and networking platform for Softxu Technologies. This repository is the modular monolith described in the architecture plan: a NestJS API, a Next.js portal, a Flutter app, and a Python image worker. Phase 1 is accounts and an empty wallet. Phase 2 adds manual cards. Phase 3 adds a scan that uses a mock reader. Phase 4 adds digital cards and a public page. Phase 5 adds a share link that expires and can be revoked. Phase 6 adds a short-lived QR exchange between two signed-in people. Phase 7 adds account export and deletion, upload rate limits, an offline read cache, an accessibility pass, optional OpenTelemetry, and Fly config that has not been applied.
 
 ## What works
 
-A new person can register, sign in, and open a wallet on the web app and on the Flutter app. On the web they can add a card, edit it, search, mark a favourite, tag it, publish a digital card, share a link to chosen fields, and exchange a card with a short-lived QR. The Flutter wallet lists card titles. The API checks the access token on every protected route, so one account cannot read another account's card or profile. Refresh tokens rotate and are stored only as an HMAC. Passwords are Argon2id hashes.
+A new person can register, sign in, and open a wallet on the web app and on the Flutter app. On the web they can add a card, edit it, search, mark a favourite, tag it, publish a digital card, share a link to chosen fields, exchange a card with a short-lived QR, download a JSON export of their account, and schedule deletion. The Flutter wallet lists card titles and can show the last list it saved when the network fails. The API checks the access token on every protected route, so one account cannot read another account's card or profile. Refresh tokens rotate and are stored only as an HMAC. Passwords are Argon2id hashes.
 
 Local infrastructure is Docker Compose: Postgres 16, Redis 7, MinIO, and ElasticMQ. Nothing here provisions Fly or AWS, and there is no Terraform.
 
@@ -17,13 +17,14 @@ Local infrastructure is Docker Compose: Postgres 16, Redis 7, MinIO, and Elastic
 | Digital cards, templates, `/v1/public/cards/:slug`                                | Two templates, design, publish, and QR, PNG, PDF, vCard export         |
 | Share links, `/v1/public/shares/:token`, `/s/[token]`                             | Hashed token, expiry, revoke, optional PIN, vCard, and claim           |
 | `POST /v1/exchange-sessions` and `/exchange/[id]`                                 | QR or link session, join, consent, and a snapshot after consent        |
-| Assets, `PATCH /v1/me`                                                            | Assets can be presigned. Profile edits are `501`                       |
+| `POST /v1/me/export`, `POST /v1/me/delete`, `GET /v1/admin/jobs`                  | Export downloads JSON. Deletion is scheduled. Admins see job counts    |
+| Assets, `PATCH /v1/me`                                                            | Assets can be presigned and are rate limited. Profile edits are `501`  |
 | `GET /v1/auth/oidc/*`                                                             | `501` `identity_provider_unconfigured` until `OIDC_*` is set           |
 | `GET /health`                                                                     | Postgres, Redis, storage, and queue                                    |
 | `GET /docs`                                                                       | Swagger, off when `NODE_ENV=production`                                |
 | Web `/register`, `/login`, `/wallet`, `/c/[slug]`, `/s/[token]`, `/exchange/[id]` | Working, with loading, empty, validation, denied, and network states   |
-| Flutter                                                                           | Register, sign in, and an empty or titled wallet. No exchange screen   |
-| Image worker                                                                      | Orient, contrast, thumbnail, and grounded fields. No live OCR provider |
+| Flutter                                                                           | Register, sign in, a titled wallet, and a saved-card read cache        |
+| Image worker                                                                      | Orient, contrast, thumbnail, and grounded fields. Processing stays off |
 
 ## Local setup
 
@@ -75,7 +76,13 @@ pnpm test:mobile
 
 GitHub Actions runs the TypeScript typecheck, lint, unit tests, and integration tests against Postgres and Redis service containers, plus Ruff, pytest, `dart analyze`, and `flutter test`.
 
-Migrations are additive: accounts, the manual wallet, scan assets, card templates, share links, and exchange sessions. If they have to be undone before any later migration, restore a database snapshot. There is no down migration.
+Migrations are additive: accounts, the manual wallet, scan assets, card templates, share links, exchange sessions, and account lifecycle. If they have to be undone before any later migration, restore a database snapshot. There is no down migration.
+
+A local load check, not part of CI, talks to an API that is already running:
+
+```bash
+node apps/api/scripts/load-check.mjs
+```
 
 ## Out of scope
 
@@ -83,4 +90,18 @@ Phase 6 lets two signed-in people exchange through a QR or the same short-lived 
 
 Android can advertise BLE in the foreground with a service UUID and a short code. iOS does not allow an app to advertise an arbitrary BLE service in the background, and this build does not ship a foreground advertiser. NFC host-card emulation is not available to third-party apps on iOS, and Android host-card emulation needs a foreground service this build does not include. `method` `ble` or `nfc` returns 400 and says to use QR. There is no tap-to-transfer. If a radio path is added later, a failure falls back to this QR.
 
-The Flutter app does not open an exchange. The web join page is the stand-in for a camera scanner: open the QR URL, or paste the code. A real OCR provider is not configured. Camera behaviour on a physical phone is untested. Text delivery stays on the mock sender. Phase 7 is not started: account export, account deletion, an offline cache, OpenTelemetry, a load test, and a hosted deploy. Fly, AWS, and Terraform are not part of this change.
+The Flutter app does not open an exchange. The web join page is the stand-in for a camera scanner: open the QR URL, or paste the code. A real OCR provider is not configured. Camera behaviour on a physical phone is untested. Text delivery stays on the mock sender.
+
+Phase 7 schedules deletion and blocks sign-in immediately. The account row stays. After the grace period, which defaults to 7 days, an admin job read or `pnpm --filter @softxu/api exec tsx src/purge-accounts.ts` scrubs identity and card fields. People who already saved a snapshot keep that copy. `PATCH /v1/me` is still `501`. OpenTelemetry stays off until `OTEL_EXPORTER_OTLP_ENDPOINT` is set, and spans carry the method, redacted path, and status code. The image worker image loops on a health check and does not read the queue.
+
+Fly config is in `infra/fly/` for the API, web, and worker. It has not been applied. There are no Fly apps, no Fly Managed Postgres, and no Upstash Redis from this repository. The region placeholder is `bom` and is not a production decision. Legal review of DPDP notices is for a person. Card images stay on S3 with presigned URLs. There is no Terraform tree and nothing here provisions AWS.
+
+From the repo root, after a person agrees the region and supplies secrets outside git:
+
+```bash
+fly deploy . --config infra/fly/api.toml
+fly deploy . --config infra/fly/web.toml --build-arg API_PROXY_ORIGIN=https://your-api.example
+fly deploy . --config infra/fly/worker.toml
+```
+
+Do not put secrets in the toml files or the images.

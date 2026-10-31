@@ -21,6 +21,7 @@ export function WalletView({
   onRetry,
   onSignOut,
   signOutError,
+  offlineCopy,
 }: {
   state: "loading" | "empty" | "ready" | "denied" | "network";
   displayName?: string;
@@ -32,6 +33,7 @@ export function WalletView({
   onRetry?: () => void;
   onSignOut?: () => void;
   signOutError?: string | null;
+  offlineCopy?: string | null;
 }) {
   if (state === "loading") return <LoadingState label="Loading your wallet…" />;
   if (state === "network") return <NetworkState onRetry={onRetry} />;
@@ -39,6 +41,7 @@ export function WalletView({
   return (
     <section>
       <p role="status">Signed in as {displayName}</p>
+      {offlineCopy ? <p>{offlineCopy}</p> : null}
       <div className="row">
         <Link className="button" href="/wallet/new">
           Add a card

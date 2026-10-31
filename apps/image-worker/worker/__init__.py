@@ -1,1 +1,1 @@
-"""Image worker package. Queue consumption and OpenCV arrive in a later phase."""
+"""Image worker package. The long-running process does not consume the queue."""

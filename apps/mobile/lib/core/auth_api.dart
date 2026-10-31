@@ -11,6 +11,7 @@ class Session {
     required this.displayName,
     required this.email,
     required this.role,
+    required this.userId,
   });
 
   final String accessToken;
@@ -18,6 +19,7 @@ class Session {
   final String displayName;
   final String? email;
   final String role;
+  final String userId;
 }
 
 class WalletSnapshot {
@@ -106,6 +108,7 @@ class AuthApi {
       displayName: (json['user'] as Map?)?['displayName'] as String? ?? 'Member',
       email: (json['user'] as Map?)?['email'] as String?,
       role: (json['user'] as Map?)?['role'] as String? ?? 'user',
+      userId: (json['user'] as Map?)?['id'] as String? ?? '',
     );
   }
 

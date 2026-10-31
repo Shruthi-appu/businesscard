@@ -127,9 +127,29 @@ button:disabled {
 }
 button:focus-visible,
 a:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible,
+.skip:focus {
   outline: 3px solid rgba(15, 110, 86, 0.35);
   outline-offset: 2px;
+}
+
+.skip {
+  position: absolute;
+  left: 1rem;
+  top: 0.5rem;
+  transform: translateY(-150%);
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: 0.5rem 0.8rem;
+  z-index: 10;
+  text-decoration: none;
+}
+.skip:focus {
+  position: static;
+  display: inline-block;
+  margin: 0 0 0.75rem;
+  transform: none;
 }
 
 form {

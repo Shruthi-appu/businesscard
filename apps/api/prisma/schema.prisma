@@ -31,6 +31,8 @@ model User {
   identitySubject  String?    @map("identity_subject")
   status           UserStatus @default(active)
   role             UserRole   @default(user)
+  deletionScheduledAt DateTime? @map("deletion_scheduled_at") @db.Timestamptz
+  purgedAt         DateTime?  @map("purged_at") @db.Timestamptz
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime   @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -51,6 +53,7 @@ model User {
   snapshots        CardSnapshot[]
   exchangeSessions ExchangeSession[] @relation("ExchangeInitiator")
   exchangeParticipations ExchangeParticipant[]
+  dataExports      DataExport[]
 
   @@unique([identityProvider, identitySubject])
   @@map("users")
@@ -627,6 +630,31 @@ model CardSnapshot {
 
   @@index([ownerUserId])
   @@map("card_snapshots")
+}
+
+enum DataExportStatus {
+  queued
+  ready
+  failed
+
+  @@map("data_export_status")
+}
+
+model DataExport {
+  id         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String           @map("user_id") @db.Uuid
+  status     DataExportStatus @default(queued)
+  storageKey String?          @map("storage_key")
+  byteSize   Int?             @map("byte_size")
+  errorCode  String?          @map("error_code")
+  readyAt    DateTime?        @map("ready_at") @db.Timestamptz
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("data_exports")
 }
 
 enum ExchangeStatus {

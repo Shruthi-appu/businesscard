@@ -1,0 +1,18 @@
+# Softxu web. This file is not deployed. Build with API_PROXY_ORIGIN set to the API origin.
+app = "softxu-web"
+primary_region = "bom"
+
+[build]
+  dockerfile = "apps/web/Dockerfile"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
