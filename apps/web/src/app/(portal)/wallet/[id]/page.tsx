@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ExchangeStart } from "@/components/exchange-start";
 import { DeniedState, LoadingState, NetworkState, ValidationState } from "@/components/states";
 import { ApiError, apiSend } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -150,7 +151,7 @@ export default function CardDetailPage() {
         <p role="status">This email or phone is already in your wallet.</p>
       ) : null}
       {detail.readOnly ? (
-        <p>This is a copy saved from a shared link. It does not change the sender's card.</p>
+        <p>This is a saved copy. It does not change the other person's card.</p>
       ) : (
         <form
           onSubmit={(event) => {
@@ -266,6 +267,7 @@ export default function CardDetailPage() {
           ) : null}
         </form>
       )}
+      {detail.readOnly ? null : <ExchangeStart token={auth.accessToken} cardId={detail.id} />}
       {detail.tags.length > 0 ? (
         <ul className="row">
           {detail.tags.map((tag) => (
