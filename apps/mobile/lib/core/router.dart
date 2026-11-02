@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/auth_screens.dart';
 import '../features/auth/session_controller.dart';
+import '../features/wallet/card_detail_screen.dart';
+import '../features/wallet/design_screen.dart';
+import '../features/wallet/new_card_screen.dart';
+import '../features/wallet/scan_screen.dart';
 import '../features/wallet/wallet_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -33,7 +37,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
       ),
-      GoRoute(path: '/wallet', builder: (context, state) => const WalletScreen()),
+      GoRoute(
+        path: '/wallet',
+        builder: (context, state) => const WalletScreen(),
+        routes: [
+          GoRoute(path: 'new', builder: (context, state) => const NewCardScreen()),
+          GoRoute(path: 'scan', builder: (context, state) => const ScanScreen()),
+          GoRoute(path: 'create', builder: (context, state) => const DesignScreen()),
+          GoRoute(
+            path: ':id',
+            builder: (context, state) => CardDetailScreen(cardId: state.pathParameters['id']!),
+          ),
+        ],
+      ),
     ],
   );
 });

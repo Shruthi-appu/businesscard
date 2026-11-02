@@ -15,4 +15,11 @@ class ApiProblem implements Exception {
   bool get isValidation => status == 400;
   bool get isDenied => status == 403;
   bool get isUnauthenticated => status == 401;
+
+  String get message {
+    if (isNetwork) {
+      return "We couldn't reach Softxu. Check your connection and try again.";
+    }
+    return [title, ...fieldErrors].where((line) => line.isNotEmpty).join(' ');
+  }
 }

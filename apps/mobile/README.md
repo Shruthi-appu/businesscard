@@ -22,4 +22,4 @@ flutter run -d ios --dart-define=API_ORIGIN=http://192.168.1.10:3001
 
 The iPhone target is portrait-only, bundle id `technology.softxu.softxu`, and iOS 15 or newer. Debug builds allow local HTTP. A release build expects HTTPS.
 
-The app does not scan cards, publish a public page, or exchange over QR. Those flows are on the web app.
+On iPhone the wallet matches the web phases: add a card, read the mock sample scan, design and publish a public card, open a card to edit it, favourite it, tag it, share a link, and show an exchange QR. Account export copies the JSON, and deletion asks for confirmation before signing out. The scan uses the mock reader, so it reads a sample card instead of the camera.
