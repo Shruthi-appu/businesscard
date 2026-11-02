@@ -28,8 +28,8 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Add a card'), findsOneWidget);
-    expect(find.text('Scan a card'), findsOneWidget);
+    expect(find.byTooltip('Add a card'), findsOneWidget);
+    expect(find.byTooltip('Scan a card'), findsOneWidget);
     expect(find.text('Design a card'), findsOneWidget);
     expect(find.text('Export my data'), findsOneWidget);
     expect(find.text('Ada Lovelace'), findsWidgets);
@@ -48,8 +48,8 @@ void main() {
     await tester.tap(find.byTooltip('Back'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    await tester.ensureVisible(find.text('Scan a card'));
-    await tester.tap(find.text('Scan a card'));
+    await tester.ensureVisible(find.byTooltip('Scan a card'));
+    await tester.tap(find.byTooltip('Scan a card'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Read the sample card'));
     await tester.pumpAndSettle();

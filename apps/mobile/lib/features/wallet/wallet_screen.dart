@@ -9,6 +9,7 @@ import '../../core/providers.dart';
 import '../../ui/softxu_controls.dart';
 import '../auth/session_controller.dart';
 import 'wallet_controller.dart';
+import 'wallet_stack.dart';
 
 class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
@@ -93,22 +94,7 @@ class WalletScreen extends ConsumerWidget {
                 'Saved on this device. These cards may be out of date.',
               ),
             ],
-            const SizedBox(height: 16),
-            SoftxuPrimaryButton(
-              onPressed: () => context.push('/wallet/new'),
-              label: 'Add a card',
-            ),
-            const SizedBox(height: 8),
-            SoftxuSecondaryButton(
-              onPressed: () => context.push('/wallet/scan'),
-              label: 'Scan a card',
-            ),
-            const SizedBox(height: 8),
-            SoftxuSecondaryButton(
-              onPressed: () => context.push('/wallet/create'),
-              label: 'Design a card',
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _WalletSearch(
               text: query.text,
               onChanged: (value) => ref.read(walletQueryProvider.notifier).setText(value),
@@ -128,7 +114,7 @@ class WalletScreen extends ConsumerWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             if (lines.isEmpty) ...[
               Text(
                 query.text.isNotEmpty || query.filter != 'all'
@@ -144,20 +130,30 @@ class WalletScreen extends ConsumerWidget {
                     ? 'Try a different search or show all cards.'
                     : 'Cards you create or receive will show up here.',
               ),
-            ] else
-              for (var index = 0; index < lines.length; index++)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _CardLine(
+              const SizedBox(height: 12),
+            ],
+            WalletSleeveStack(
+              passes: [
+                for (var index = 0; index < lines.length; index++)
+                  WalletPass(
                     label: lines[index],
                     detail: index < snapshot.cards.length ? snapshot.cards[index].company : null,
-                    favourite:
-                        index < snapshot.cards.length && snapshot.cards[index].isFavourite,
+                    favourite: index < snapshot.cards.length && snapshot.cards[index].isFavourite,
                     onOpen: index < snapshot.cards.length && snapshot.cards[index].id.isNotEmpty
                         ? () => context.push('/wallet/${snapshot.cards[index].id}')
                         : null,
                   ),
-                ),
+              ],
+              onAdd: () => context.push('/wallet/new'),
+              onScan: () => context.push('/wallet/scan'),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SoftxuLink(
+                onPressed: () => context.push('/wallet/create'),
+                label: 'Design a card',
+              ),
+            ),
             if (!ready.fromCache) ...[
               const SizedBox(height: 8),
               const _AccountSection(),
@@ -214,34 +210,6 @@ class _WalletSearchState extends State<_WalletSearch> {
   @override
   Widget build(BuildContext context) {
     return SoftxuField(controller: _controller, label: 'Search', onChanged: widget.onChanged);
-  }
-}
-
-class _CardLine extends StatelessWidget {
-  const _CardLine({
-    required this.label,
-    this.detail,
-    this.favourite = false,
-    this.onOpen,
-  });
-
-  final String label;
-  final String? detail;
-  final bool favourite;
-  final VoidCallback? onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final text = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 22)),
-        if (detail != null && detail!.isNotEmpty) Text(detail!),
-        if (favourite) const Text('Favourite'),
-      ],
-    );
-    if (onOpen == null) return text;
-    return InkWell(onTap: onOpen, child: text);
   }
 }
 
