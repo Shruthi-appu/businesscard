@@ -83,8 +83,9 @@ class WalletPass {
 ///
 /// Cards wait in the wallet. Open wallet deals them over 2300ms into the
 /// vertical fan. Close wallet runs that deal backwards. Once the fan is open,
-/// a vertical scroll eases the stack up or down, and the card under the cursor
-/// opens halfway in its own slot.
+/// a vertical scroll eases the stack up or down. The card under the cursor,
+/// or a card that is pressed, opens halfway in its own slot. A second press
+/// on that card opens it fully.
 class CardsStage extends StatefulWidget {
   const CardsStage({
     super.key,
@@ -128,8 +129,16 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   late final AnimationController _half;
   late final AnimationController _scrollAnim;
   int? _hover;
+  int? _pinned;
   int? _halfIndex;
   int? _opened;
+
+  /// Movement past this counts as a drag, so the fan scrolls and the card
+  /// does not half-open or open. Kept inside the tap slop (18px).
+  static const _pressSlop = 16.0;
+  double _pressTravel = 0;
+  double _pressDy = 0;
+  bool _pressDrag = false;
   var _menuOpen = false;
   VoidCallback? _showMenu;
   double _scroll = 0;
@@ -158,6 +167,7 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
           ..addStatusListener((status) {
             if (status == AnimationStatus.dismissed &&
                 _hover == null &&
+                _pinned == null &&
                 mounted) {
               setState(() => _halfIndex = null);
             }
@@ -226,7 +236,9 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     _scrollFrom = 0;
     _scrollTarget = 0;
     _scrollAnim.stop();
-    _setHover(null);
+    _pinned = null;
+    _hover = null;
+    _collapseLift();
     _deal.reverse();
   }
 
@@ -253,25 +265,70 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     _nudgeScroll(event.panDelta.dy);
   }
 
+  void _onFanPointerDown(PointerDownEvent event) {
+    _pressTravel = 0;
+    _pressDy = 0;
+    _pressDrag = false;
+  }
+
+  void _onFanPointerMove(PointerMoveEvent event) {
+    if (!event.down) return;
+    _pressTravel += event.delta.distance;
+    if (_pressTravel < _pressSlop) {
+      _pressDy += event.delta.dy;
+      return;
+    }
+    final dy = _pressDy + event.delta.dy;
+    _pressDy = 0;
+    _pressDrag = true;
+    if (dy != 0) _nudgeScroll(dy);
+  }
+
+  /// A press that is not a drag half-opens [index]. A second press on the
+  /// card that is already half-open from a press opens the full detail.
+  void _pressCard(int index) {
+    if (_pressDrag || _intro < 1 || _opened != null || _menuOpen) return;
+    if (_pinned == index) {
+      setState(() => _opened = index);
+      _pinned = null;
+      _hover = null;
+      _collapseLift();
+      return;
+    }
+    _pinned = index;
+    _aimLift(index);
+  }
+
   void _setHover(int? index) {
     if (index == _hover) return;
+    _hover = index;
+    _aimLift(_hover ?? _pinned);
+  }
+
+  void _aimLift(int? index) {
     if (index == null) {
-      setState(() => _hover = null);
-      if (_half.value > 0) {
-        _half.reverse();
-      } else if (_halfIndex != null) {
-        setState(() => _halfIndex = null);
+      _collapseLift();
+      return;
+    }
+    if (_halfIndex == index) {
+      if (_half.value < 1 && _half.status != AnimationStatus.forward) {
+        _half.forward();
       }
       return;
     }
-    if (_halfIndex != null && _halfIndex != index && _half.value > 0) {
+    if (_halfIndex != null && _half.value > 0) {
       _half.value = 0;
     }
-    setState(() {
-      _hover = index;
-      _halfIndex = index;
-    });
+    setState(() => _halfIndex = index);
     _half.forward();
+  }
+
+  void _collapseLift() {
+    if (_half.value > 0) {
+      _half.reverse();
+    } else if (_halfIndex != null) {
+      setState(() => _halfIndex = null);
+    }
   }
 
   _Deck _present(_Deck deck) {
@@ -427,10 +484,8 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
                     Positioned.fill(
                       child: Listener(
                         behavior: HitTestBehavior.translucent,
-                        onPointerMove: (event) {
-                          if (!event.down) return;
-                          _nudgeScroll(event.delta.dy);
-                        },
+                        onPointerDown: _onFanPointerDown,
+                        onPointerMove: _onFanPointerMove,
                         child: Stack(
                           children: [
                             const Positioned.fill(child: SizedBox.expand()),
@@ -542,10 +597,7 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
         stripWidth: strip.width,
         stripHeight: strip.height,
         interactive: _intro >= 1 && _opened == null,
-        onTap: () {
-          setState(() => _opened = placed.index);
-          _setHover(null);
-        },
+        onTap: () => _pressCard(placed.index),
       ),
     );
   }

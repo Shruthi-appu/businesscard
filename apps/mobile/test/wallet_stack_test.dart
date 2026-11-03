@@ -81,7 +81,22 @@ void main() {
     await pointer.removePointer();
     await tester.pumpAndSettle();
 
+    final graceRest = tester.getRect(graceCard);
+    final graceTextRest = tester.getTopLeft(find.text('Grace')).dy;
     await tester.tap(find.text('Grace'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('open-card')), findsNothing);
+    final graceHalf = tester.getRect(graceCard);
+    final graceText = tester.getTopLeft(find.text('Grace')).dy;
+    expect((graceHalf.top - graceRest.top).abs(), lessThan(12));
+    expect(
+      graceHalf.height,
+      closeTo(graceRest.height * 1.5, graceRest.height * 0.12),
+    );
+    expect((graceText - graceTextRest).abs(), lessThan(40));
+    expect(graceText, lessThan(graceHalf.top + 56));
+
+    await tester.tapAt(Offset(graceHalf.center.dx, graceHalf.top + 28));
     await tester.pumpAndSettle();
     final open = find.byKey(const ValueKey('open-card'));
     expect(open, findsOneWidget);
@@ -104,6 +119,23 @@ void main() {
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('open-card')), findsNothing);
+
+    final adaCard = find.byKey(const ValueKey('wallet-pass-0'));
+    final adaRest = tester.getRect(adaCard);
+    final graceBeforeSlide = tester.getTopLeft(find.text('Grace')).dy;
+    await tester.tap(find.text('Ada'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('open-card')), findsNothing);
+    final adaHalf = tester.getRect(adaCard);
+    expect((adaHalf.top - adaRest.top).abs(), lessThan(12));
+    expect(
+      adaHalf.height,
+      closeTo(adaRest.height * 1.5, adaRest.height * 0.12),
+    );
+    expect(
+      tester.getTopLeft(find.text('Grace')).dy,
+      greaterThan(graceBeforeSlide + 12),
+    );
   });
 
   testWidgets('an open sample card shows values and icons without titles', (
@@ -129,6 +161,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Open wallet'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text(card.name));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('open-card')), findsNothing);
     await tester.tap(find.text(card.name));
     await tester.pumpAndSettle();
 
@@ -309,6 +344,7 @@ void main() {
 
     final card = find.byKey(const ValueKey('wallet-pass-0'));
     final before = tester.getCenter(card);
+    final beforeHeight = tester.getSize(card).height;
     await tester.sendEventToBinding(
       PointerScrollEvent(
         position: tester.getCenter(find.byType(CardsStage)),
@@ -325,6 +361,8 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     expect(tester.getCenter(card).dy, lessThan(scrolled.dy - 30));
+    expect(tester.getSize(card).height, closeTo(beforeHeight, 12));
+    expect(find.byKey(const ValueKey('open-card')), findsNothing);
 
     await tester.tap(find.text('Add+'));
     await tester.pump();

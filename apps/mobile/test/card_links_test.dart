@@ -101,6 +101,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('wallet-pass-0')));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('wallet-pass-0')));
+      await tester.pumpAndSettle();
 
       final open = find.byKey(const ValueKey('open-card'));
       expect(open, findsOneWidget);

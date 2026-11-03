@@ -97,6 +97,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ada Lovelace'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Ada Lovelace'));
+    await tester.pumpAndSettle();
     final open = find.byKey(const ValueKey('open-card'));
     expect(open, findsOneWidget);
     expect(find.text('Analytical Engines'), findsWidgets);
