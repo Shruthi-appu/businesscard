@@ -341,7 +341,11 @@ void main() {
     await tester.pump();
     await gesture.up();
     await tester.pumpAndSettle();
-    expect(tester.getRect(next).top, lessThan(tester.getRect(front).top));
+    expect(tester.getRect(front).top, lessThan(tester.getRect(next).top));
+    expect(
+      (tester.getRect(front).left - tester.getRect(next).left).abs(),
+      lessThan(2),
+    );
 
     await tester.tap(find.text('Add+'));
     await tester.pump();

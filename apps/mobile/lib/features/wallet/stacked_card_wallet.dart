@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'business_card.dart';
@@ -160,7 +161,8 @@ double _ease(double u) {
 }
 
 /// Landscape cards in a vertical column. A tap on a lower card brings that
-/// card to the top. A horizontal swipe moves to the next or previous card.
+/// card to the top. Moving the pointer left or up brings the next card
+/// forward. Moving it right or down brings the previous card forward.
 /// A tap on the top card calls [onOpen].
 class StackedBusinessCardWallet extends StatefulWidget {
   const StackedBusinessCardWallet({
@@ -193,7 +195,8 @@ class StackedBusinessCardWallet extends StatefulWidget {
 
 class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet> {
   String? _frontId;
-  double _drag = 0;
+  double _dragX = 0;
+  double _dragY = 0;
 
   int get _front {
     final cards = widget.cards;
@@ -211,7 +214,17 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet> {
   void _advance(int delta) {
     final count = widget.cards.length;
     if (count == 0) return;
-    _setFront((_front + delta) % count);
+    _setFront((_front + delta + count) % count);
+  }
+
+  /// Negative distance or velocity moves to the next card. Positive moves
+  /// to the previous card. A short press stays a tap.
+  void _finishDrag(double distance, double velocity) {
+    if (distance <= -36 || velocity < -250) {
+      _advance(1);
+    } else if (distance >= 36 || velocity > 250) {
+      _advance(-1);
+    }
   }
 
   Rect _tuckRect(int index) {
@@ -266,22 +279,33 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet> {
         final open = widget.reveal >= 1;
         return GestureDetector(
           key: const ValueKey('stacked-card-wallet'),
+          dragStartBehavior: DragStartBehavior.down,
           behavior: open && widget.interactive
               ? HitTestBehavior.translucent
               : HitTestBehavior.deferToChild,
           onHorizontalDragUpdate: open && widget.interactive
-              ? (details) => _drag += details.delta.dx
+              ? (details) => _dragX += details.delta.dx
               : null,
           onHorizontalDragEnd: open && widget.interactive
               ? (details) {
-                  final velocity = details.primaryVelocity ?? 0;
-                  if (_drag <= -36 || velocity < -250) {
-                    _advance(1);
-                  } else if (_drag >= 36 || velocity > 250) {
-                    _advance(-1);
-                  }
-                  _drag = 0;
+                  _finishDrag(_dragX, details.primaryVelocity ?? 0);
+                  _dragX = 0;
                 }
+              : null,
+          onHorizontalDragCancel: open && widget.interactive
+              ? () => _dragX = 0
+              : null,
+          onVerticalDragUpdate: open && widget.interactive
+              ? (details) => _dragY += details.delta.dy
+              : null,
+          onVerticalDragEnd: open && widget.interactive
+              ? (details) {
+                  _finishDrag(_dragY, details.primaryVelocity ?? 0);
+                  _dragY = 0;
+                }
+              : null,
+          onVerticalDragCancel: open && widget.interactive
+              ? () => _dragY = 0
               : null,
           child: Stack(
             clipBehavior: Clip.none,

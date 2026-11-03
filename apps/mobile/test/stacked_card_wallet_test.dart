@@ -106,6 +106,38 @@ void main() {
     expect(behind.top, lessThan(nextFront.bottom - 12));
   });
 
+  testWidgets('moving the pointer up brings the next card forward', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(_host(_sample(), onOpen: (_) {}));
+    await tester.pumpAndSettle();
+
+    final arjun = find.byKey(const ValueKey('card-arjun'));
+    final meera = find.byKey(const ValueKey('card-meera'));
+    expect(tester.getRect(arjun).top, lessThan(tester.getRect(meera).top));
+
+    final nudge = await tester.startGesture(tester.getCenter(arjun));
+    await nudge.moveBy(const Offset(0, -12));
+    await nudge.up();
+    await tester.pumpAndSettle();
+    expect(tester.getRect(arjun).top, lessThan(tester.getRect(meera).top));
+
+    final lift = await tester.startGesture(tester.getCenter(arjun));
+    await lift.moveBy(const Offset(0, -80));
+    await lift.up();
+    await tester.pumpAndSettle();
+    expect(tester.getRect(meera).top, lessThan(tester.getRect(arjun).top));
+    expect(
+      (tester.getRect(meera).left - tester.getRect(arjun).left).abs(),
+      lessThan(2),
+    );
+  });
+
   testWidgets('the pile fits a narrow phone and a wide phone', (tester) async {
     for (final size in const [Size(320, 700), Size(430, 932)]) {
       tester.view.devicePixelRatio = 1;
