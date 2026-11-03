@@ -136,11 +136,14 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   int? _pinned;
   int? _halfIndex;
 
-  /// Movement past this counts as a drag, so the fan scrolls and the card
-  /// does not half-open or open. Kept inside the tap slop (18px).
+  /// How far a pressed card rises out of the horizontal row.
+  static const _pickLift = 16.0;
+
+  /// Movement past this counts as a drag, so the row slides and the card
+  /// does not lift. Kept inside the tap slop (18px).
   static const _pressSlop = 16.0;
   double _pressTravel = 0;
-  double _pressDy = 0;
+  double _pressDx = 0;
   bool _pressDrag = false;
   var _menuOpen = false;
   VoidCallback? _showMenu;
@@ -148,6 +151,7 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   double _scrollFrom = 0;
   double _scrollTarget = 0;
   double _scrollLimit = 180;
+  double _peek = 0;
 
   @override
   void initState() {
@@ -250,27 +254,50 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     return Curves.easeOutCubic.transform(_half.value);
   }
 
-  void _nudgeScroll(double dy) {
-    if (_intro < 1 || _menuOpen || dy == 0) return;
+  void _nudgeScroll(double delta, {bool snap = false}) {
+    if (_intro < 1 || _menuOpen || delta == 0) return;
     _scrollFrom = _scroll;
     final limit = _scrollLimit;
-    _scrollTarget = (_scrollTarget + dy).clamp(-limit, limit).toDouble();
+    var next = (_scrollTarget + delta).clamp(0.0, limit).toDouble();
+    if (snap) next = _snapped(next);
+    _scrollTarget = next;
+    _scrollAnim.forward(from: 0);
+  }
+
+  double _snapped(double value) {
+    if (_peek <= 0) return value;
+    final step = (value / _peek).round() * _peek;
+    return step.clamp(0.0, _scrollLimit).toDouble();
+  }
+
+  void _snapScroll() {
+    if (_intro < 1 || _peek <= 0) return;
+    final next = _snapped(_scrollTarget);
+    if ((next - _scroll).abs() < 0.5) return;
+    _scrollFrom = _scroll;
+    _scrollTarget = next;
     _scrollAnim.forward(from: 0);
   }
 
   void _onPointerSignal(PointerSignalEvent event) {
     if (event is PointerScrollEvent) {
-      _nudgeScroll(event.scrollDelta.dy);
+      final delta = event.scrollDelta.dx != 0
+          ? event.scrollDelta.dx
+          : event.scrollDelta.dy;
+      _nudgeScroll(delta, snap: true);
     }
   }
 
   void _onPanZoom(PointerPanZoomUpdateEvent event) {
-    _nudgeScroll(event.panDelta.dy);
+    final delta = event.panDelta.dx != 0
+        ? event.panDelta.dx
+        : event.panDelta.dy;
+    _nudgeScroll(delta);
   }
 
   void _onFanPointerDown(PointerDownEvent event) {
     _pressTravel = 0;
-    _pressDy = 0;
+    _pressDx = 0;
     _pressDrag = false;
   }
 
@@ -278,13 +305,17 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     if (!event.down) return;
     _pressTravel += event.delta.distance;
     if (_pressTravel < _pressSlop) {
-      _pressDy += event.delta.dy;
+      _pressDx += event.delta.dx;
       return;
     }
-    final dy = _pressDy + event.delta.dy;
-    _pressDy = 0;
+    final dx = _pressDx + event.delta.dx;
+    _pressDx = 0;
     _pressDrag = true;
-    if (dy != 0) _nudgeScroll(dy);
+    if (dx != 0) _nudgeScroll(dx);
+  }
+
+  void _onFanPointerUp(PointerUpEvent event) {
+    if (_pressDrag) _snapScroll();
   }
 
   /// A press that is not a drag half-opens [index] in the fan.
@@ -343,43 +374,31 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
         ? Curves.easeOutCubic.transform(_half.value)
         : 0.0;
     if (scroll == 0 && openT == 0) return deck;
+    final count = deck.cards.length;
+    final peek = count < 2 ? 0.0 : deck.cards[1].cx - deck.cards[0].cx;
+    final units = peek <= 0 ? 0.0 : scroll / peek;
+    final lastCx = count == 0 ? 0.0 : deck.cards.last.cx;
     final cards = <_Placed>[
       for (final card in deck.cards)
         _Placed(
           index: card.index,
-          cx: card.cx,
-          cy: card.cy + scroll,
+          cx: _rowCenter(
+            card,
+            units: units,
+            peek: peek,
+            lastCx: lastCx,
+            count: count,
+          ),
+          cy: card.cy - (card.index == halfIndex ? _pickLift * openT : 0),
           width: card.width,
           height: card.height,
           scale: card.scale,
         ),
     ];
-    if (halfIndex != null &&
-        openT > 0 &&
-        halfIndex >= 0 &&
-        halfIndex < cards.length - 1) {
-      final host = cards[halfIndex];
-      final hostTop = host.cy - host.height / 2;
-      final hostBottom = hostTop + host.height * (1 + 0.5 * openT);
-      final belowTop =
-          cards[halfIndex + 1].cy - cards[halfIndex + 1].height / 2;
-      final extra = math.max(0.0, hostBottom - belowTop);
-      if (extra > 0) {
-        for (var i = halfIndex + 1; i < cards.length; i++) {
-          final card = cards[i];
-          cards[i] = _Placed(
-            index: card.index,
-            cx: card.cx,
-            cy: card.cy + extra,
-            width: card.width,
-            height: card.height,
-            scale: card.scale,
-          );
-        }
-      }
-    }
     return _Deck(
       cards: cards,
+      clipLeft: deck.clipLeft,
+      clipRight: deck.clipRight,
       walletTop: deck.walletTop,
       walletW: deck.walletW,
       seam: deck.seam,
@@ -393,50 +412,47 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     );
   }
 
+  /// Cards behind the front one stay one peek apart. A card that has been
+  /// slid past the front travels by its own width, so it leaves the window
+  /// instead of sitting on top of the next card.
+  double _rowCenter(
+    _Placed card, {
+    required double units,
+    required double peek,
+    required double lastCx,
+    required int count,
+  }) {
+    if (units == 0 || peek <= 0 || count < 2) return card.cx;
+    final depth = (count - 1 - units) - card.index;
+    if (depth >= 0) return lastCx - depth * peek;
+    return lastCx + (-depth) * card.width;
+  }
+
   Rect _strip(_Placed placed, _Deck deck) {
-    final open = _openAmount(placed.index);
-    if (open > 0) {
-      final grow = 1 + 0.5 * open;
-      return Rect.fromLTWH(
-        placed.cx - placed.width * grow / 2,
-        placed.cy - placed.height / 2,
-        placed.width * grow,
-        placed.height * grow,
-      );
-    }
-    final box = Rect.fromCenter(
-      center: Offset(placed.cx, placed.cy),
-      width: placed.width,
-      height: placed.height,
-    );
+    final left = placed.cx - placed.width * placed.scale / 2;
     final top = placed.cy - placed.height * placed.scale / 2;
-    final full = placed.height * placed.scale;
-    var height = full;
-    if (placed.index + 1 < deck.cards.length) {
+    final width = placed.width * placed.scale;
+    final height = placed.height * placed.scale;
+    var visible = width;
+    if (_openAmount(placed.index) == 0 &&
+        placed.index + 1 < deck.cards.length) {
       final next = deck.cards[placed.index + 1];
-      final nextTop = next.cy - next.height * next.scale / 2;
-      height = (nextTop - top).clamp(1.0, full);
+      final nextLeft = next.cx - next.width * next.scale / 2;
+      visible = (nextLeft - left).clamp(1.0, width);
     }
-    final visual = Rect.fromLTWH(
-      placed.cx - placed.width * placed.scale / 2,
-      top,
-      placed.width * placed.scale,
-      height,
-    );
-    final hit = visual.intersect(box);
-    if (hit.isEmpty) {
-      return Rect.fromLTWH(
-        box.left,
-        box.top,
-        box.width,
-        math.min(36, box.height),
-      );
-    }
-    return hit;
+    return Rect.fromLTWH(left, top, visible, height);
   }
 
   int? _indexAt(Offset local, _Deck deck) {
+    final lifted = _halfIndex;
+    if (lifted != null &&
+        lifted >= 0 &&
+        lifted < deck.cards.length &&
+        _strip(deck.cards[lifted], deck).contains(local)) {
+      return lifted;
+    }
     for (var i = deck.cards.length - 1; i >= 0; i--) {
+      if (i == lifted) continue;
       if (_strip(deck.cards[i], deck).contains(local)) {
         return deck.cards[i].index;
       }
@@ -460,10 +476,15 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
           count: widget.passes.length,
           intro: _intro,
         );
-        final cardH = laidOut.cards.isEmpty
-            ? 180.0
-            : laidOut.cards.first.height;
-        _scrollLimit = math.max(72, math.min(stageH * 0.34, cardH * 0.8));
+        _scrollLimit = laidOut.cards.length < 2
+            ? 0
+            : (laidOut.cards.last.cx - laidOut.cards.first.cx).abs().clamp(
+                0.0,
+                4000.0,
+              );
+        _peek = laidOut.cards.length < 2
+            ? 0
+            : laidOut.cards[1].cx - laidOut.cards[0].cx;
         final deck = _present(laidOut);
         final closing = _deal.status == AnimationStatus.reverse;
         final done = _intro >= 1 && !closing;
@@ -473,6 +494,12 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
         final openingIndex = _halfIndex != null && _half.value > 0
             ? _halfIndex
             : null;
+        final cardWidgets = <Widget>[
+          for (final placed in deck.cards)
+            if (placed.index != openingIndex) _card(placed, deck),
+          if (openingIndex != null && openingIndex < deck.cards.length)
+            _card(deck.cards[openingIndex], deck),
+        ];
 
         return Listener(
           onPointerSignal: _onPointerSignal,
@@ -490,16 +517,23 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
                         behavior: HitTestBehavior.translucent,
                         onPointerDown: _onFanPointerDown,
                         onPointerMove: _onFanPointerMove,
+                        onPointerUp: _onFanPointerUp,
                         child: Stack(
                           children: [
                             const Positioned.fill(child: SizedBox.expand()),
                             if (showWallet) _walletBack(deck, stageW, stageH),
-                            for (final placed in deck.cards)
-                              if (placed.index != openingIndex)
-                                _card(placed, deck),
-                            if (openingIndex != null &&
-                                openingIndex < deck.cards.length)
-                              _card(deck.cards[openingIndex], deck),
+                            if (_intro >= 1)
+                              Positioned.fill(
+                                child: ClipRect(
+                                  clipper: _WindowClipper(
+                                    deck.clipLeft,
+                                    deck.clipRight,
+                                  ),
+                                  child: Stack(children: cardWidgets),
+                                ),
+                              )
+                            else
+                              ...cardWidgets,
                             if (showWallet) _walletFront(deck, stageW, stageH),
                           ],
                         ),
@@ -567,12 +601,10 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   }
 
   Widget _card(_Placed placed, _Deck deck) {
-    final open = _openAmount(placed.index);
-    final grow = 1 + 0.5 * open;
     final boxTop = placed.cy - placed.height / 2;
-    final boxLeft = placed.cx - placed.width * grow / 2;
-    final boxWidth = placed.width * grow;
-    final boxHeight = placed.height * grow;
+    final boxLeft = placed.cx - placed.width / 2;
+    final boxWidth = placed.width;
+    final boxHeight = placed.height;
     final strip = _strip(placed, deck);
     return Positioned(
       left: boxLeft,
@@ -585,7 +617,7 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
         palette: _palettes[placed.index % _palettes.length],
         showBack: placed.index.isOdd,
         scale: placed.scale,
-        scaleAlignment: open > 0 ? Alignment.topCenter : Alignment.center,
+        scaleAlignment: Alignment.center,
         stripTop: strip.top - boxTop,
         stripLeft: strip.left - boxLeft,
         stripWidth: strip.width,
@@ -984,7 +1016,7 @@ class _FanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final face = ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -1039,12 +1071,17 @@ class _FanCard extends StatelessWidget {
     );
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x47000000),
-            blurRadius: 22,
-            offset: Offset(0, 12),
+            color: Color(0x33000000),
+            blurRadius: 16,
+            offset: Offset(-6, 10),
+          ),
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 4,
+            offset: Offset(-1, 2),
           ),
         ],
       ),
@@ -1084,6 +1121,8 @@ class _Deck {
     required this.buttonGap,
     required this.buttonPad,
     required this.headerHeight,
+    required this.clipLeft,
+    required this.clipRight,
   });
 
   final List<_Placed> cards;
@@ -1097,44 +1136,9 @@ class _Deck {
   final double buttonGap;
   final double buttonPad;
   final double headerHeight;
+  final double clipLeft;
+  final double clipRight;
 }
-
-class _Metrics {
-  const _Metrics({
-    required this.stepX,
-    required this.stepY,
-    required this.ax,
-    required this.ay,
-    this.fit = 1,
-    this.uniform = false,
-  });
-
-  final double stepX;
-  final double stepY;
-  final double ax;
-  final double ay;
-
-  /// Scale applied when a full-size fan would push the names off the stage.
-  final double fit;
-
-  /// Every card uses [fit] so a long fan can keep both text lines visible.
-  final bool uniform;
-}
-
-const _fanPadTop = 8.0;
-const _fanNameSize = 16.0;
-const _fanNameHeight = 1.15;
-const _fanDetailSize = 13.0;
-const _fanDetailHeight = 1.2;
-
-/// Top padding plus the name line and the category line, in card pixels.
-const _fanHeader =
-    _fanPadTop +
-    _fanNameSize * _fanNameHeight +
-    _fanDetailSize * _fanDetailHeight;
-
-/// Extra pixels so the next card does not sit on the category.
-const _fanHeaderSlack = 3.0;
 
 _Deck _layout({
   required double stageW,
@@ -1144,17 +1148,21 @@ _Deck _layout({
   required int count,
   required double intro,
 }) {
-  // Phone cards fill the screen with a small inset (14px). On a 390px
-  // phone that is 362px. The pocket is a few pixels wider (12px inset)
-  // when that still fits. The header sits above the fan, so the cards
-  // stay centered.
+  // Landscape cards share one horizontal row, like the coupon stack:
+  // the same top and height, the front card fully visible on the right,
+  // and up to three earlier cards peeking by the same fraction on the left.
+  // Cards that do not fit wait off the left edge until the row slides.
   final span = math.min(viewportW, stageW);
-  const cardInset = 14.0;
-  const pocketInset = 12.0;
-  final cardW = phone
-      ? math.max(0.0, span - cardInset * 2)
-      : math.min(270.0, viewportW * 0.26);
-  final cardH = cardW * 1.7;
+  final margin =
+      (phone
+              ? (span * 0.041).clamp(14.0, 20.0)
+              : (span * 0.04).clamp(28.0, 48.0))
+          .toDouble();
+  final content = math.max(160.0, span - margin * 2);
+  const maxPeeks = 3;
+  const peekFraction = 0.24;
+  const aspect = 1.72;
+  final shownPeeks = math.min(maxPeeks, math.max(0, count - 1));
   // Small enough that IncardIt, Add, Scan, and Design share one line.
   final wordmarkSize = phone
       ? (span * 0.066).clamp(22.0, 28.0).toDouble()
@@ -1167,50 +1175,63 @@ _Deck _layout({
   final floor = wordmarkTop + headerHeight + 10;
   final walletTop = stageH * (phone ? 0.50 : 0.54);
   final seam = phone ? 48.0 : 78.0;
+  const pocketInset = 12.0;
   final walletW = phone
-      ? math.min(math.max(0.0, span - pocketInset * 2), cardW + 4)
+      ? math.min(math.max(0.0, span - pocketInset * 2), span - 8)
       : math.min(460.0, viewportW * 0.42);
-  final maxLeft = math.max(0.0, stageW - cardW);
-  final cardLeft = ((stageW - cardW) / 2).clamp(0.0, maxLeft);
-  final ax = stageW <= 0 ? 0.5 : (cardLeft + cardW / 2) / stageW;
-  final m = _fitVertical(
-    ax: ax,
-    n: count,
-    stageH: stageH,
-    floor: floor,
-    cardH: cardH,
-  );
-  final focus = math.max(0.0, (count - 1) * 0.46);
-  final lipCy = walletTop + seam + 9;
-  final pocketX = stageW / 2 - stageW * m.ax;
-  final pocketY = lipCy + cardH * 0.5 - 26 - stageH * m.ay;
+  final controlHeight = phone ? 36.0 : 40.0;
+  final belowControls = floor + 8 + controlHeight + (phone ? 28.0 : 36.0);
+  final cap = phone ? content : math.min(460.0, content * 0.46);
+  var cardW = shownPeeks == 0
+      ? content
+      : content / (1 + peekFraction * shownPeeks);
+  if (cardW > cap) cardW = cap;
+  var cardH = cardW / aspect;
+  final room = stageH - belowControls - 16;
+  if (room > 88 && cardH > room) {
+    cardW *= room / cardH;
+    cardH = room;
+  }
+  final peek = shownPeeks == 0 ? 0.0 : cardW * peekFraction;
+  final groupW = cardW + shownPeeks * peek;
+  // Fill the side margins when the visible group is as wide as the stage.
+  // A shorter group, such as on a wide window, stays centered.
+  final rowRight = groupW >= content - 0.5
+      ? stageW - margin
+      : (stageW + groupW) / 2;
+  final lastLeft = rowRight - cardW;
+  final minTop = belowControls;
+  final maxTop = math.max(minTop, stageH - 16 - cardH);
+  final rowTop = math
+      .max(minTop, stageH * (phone ? 0.30 : 0.26))
+      .clamp(minTop, maxTop)
+      .toDouble();
+  final clipLeft = lastLeft - shownPeeks * peek;
+  final clipRight = rowRight;
+  final rowCy = rowTop + cardH / 2;
+  final pocketCx = stageW / 2;
+  final pocketCy = walletTop + seam * 0.35;
   final cards = <_Placed>[];
   for (var i = 0; i < count; i++) {
-    final t = i - focus;
-    var x = t * m.stepX;
-    var y = t * m.stepY;
-    var scale = _placedScale(i, count, m);
+    final restCx = lastLeft + cardW / 2 - (count - 1 - i) * peek;
+    var cx = restCx;
+    var cy = rowCy;
+    var scale = 1.0;
     if (intro < 1) {
       final fromFront = count - 1 - i;
       final gaps = math.max(1, count - 1);
       final start = 0.06 + fromFront * (0.58 / gaps);
       final rise = _ease((intro - start) / 0.3);
       final stack = math.min(18.0, fromFront * 1.6);
-      final sx = pocketX + stack * 0.12;
-      final sy = pocketY + stack * 0.45;
-      x = sx + (x - sx) * rise;
-      y = sy + (y - sy) * rise;
-      scale = 0.96 + (scale - 0.96) * rise;
+      cx = pocketCx + stack * 0.12 + (restCx - pocketCx) * rise;
+      cy = pocketCy + stack * 0.45 + (rowCy - pocketCy) * rise;
+      scale = 0.96 + (1 - 0.96) * rise;
     }
-    final hh = cardH * scale * 0.5;
-    final cy = stageH * m.ay + y;
-    final minCy = floor + hh;
-    if (cy < minCy) y += minCy - cy;
     cards.add(
       _Placed(
         index: i,
-        cx: stageW * m.ax + x,
-        cy: stageH * m.ay + y,
+        cx: cx,
+        cy: cy,
         width: cardW,
         height: cardH,
         scale: scale,
@@ -1229,95 +1250,33 @@ _Deck _layout({
     buttonGap: buttonGap,
     buttonPad: buttonPad,
     headerHeight: headerHeight,
+    clipLeft: clipLeft,
+    clipRight: clipRight,
   );
 }
 
-double _depthScale(int index, int count) {
-  if (count <= 1) return 1;
-  final focus = (count - 1) * 0.46;
-  final t = index - focus;
-  return (1 + t * 0.012).clamp(0.8, 1.08).toDouble();
+class _WindowClipper extends CustomClipper<Rect> {
+  const _WindowClipper(this.left, this.right);
+
+  final double left;
+  final double right;
+
+  @override
+  Rect getClip(Size size) {
+    return Rect.fromLTRB(left, 0, math.min(right, size.width), size.height);
+  }
+
+  @override
+  bool shouldReclip(_WindowClipper oldDelegate) {
+    return oldDelegate.left != left || oldDelegate.right != right;
+  }
 }
 
-double _placedScale(int index, int count, _Metrics m) {
-  if (count <= 1) return 1;
-  if (m.uniform) return m.fit;
-  return _depthScale(index, count) * m.fit;
-}
-
-_Metrics _fitVertical({
-  required double ax,
-  required int n,
-  required double stageH,
-  required double floor,
-  required double cardH,
-}) {
-  const fallback = _Metrics(stepX: 0, stepY: 48, ax: 0.5, ay: 0.46);
-  if (n < 1 || cardH < 1 || stageH < 1) return fallback;
-  const margin = 16.0;
-  final room = stageH - margin - floor;
-  final focus = math.max(0.0, (n - 1) * 0.46);
-
-  double scaleOf(int i, double fit, bool uniform) {
-    if (n <= 1) return 1;
-    if (uniform) return fit;
-    return _depthScale(i, n) * fit;
-  }
-
-  double stepFor(double fit, bool uniform) {
-    if (n <= 1) return 0;
-    var step = 0.0;
-    for (var i = 0; i < n - 1; i++) {
-      final s0 = scaleOf(i, fit, uniform);
-      final s1 = scaleOf(i + 1, fit, uniform);
-      final need =
-          _fanHeader * s0 + (cardH / 2) * (s1 - s0) + _fanHeaderSlack * s0;
-      if (need > step) step = need;
-    }
-    return step;
-  }
-
-  double stackHeight(double step, double fit, bool uniform) {
-    final s0 = scaleOf(0, fit, uniform);
-    final last = scaleOf(n - 1, fit, uniform);
-    final hh0 = cardH * s0 / 2;
-    final hhLast = cardH * last / 2;
-    if (n <= 1) return _fanHeader * s0;
-    return hh0 + (n - 1) * step - hhLast + _fanHeader * last;
-  }
-
-  var uniform = false;
-  var fit = 1.0;
-  var step = stepFor(fit, uniform);
-  if (n > 1 && room <= 8) {
-    step = math.min(step, 10);
-  } else if (n > 1 && stackHeight(step, fit, uniform) > room) {
-    // The gradient fan cannot show both lines without leaving the stage.
-    // One shared scale keeps the name and category on every card.
-    uniform = true;
-    final unitStep = stepFor(1, true);
-    final unitStack = stackHeight(unitStep, 1, true);
-    fit = unitStack <= 0 ? 1 : (room / unitStack).clamp(0.62, 1.0).toDouble();
-    step = stepFor(fit, true);
-  }
-  if (step < 0 || !step.isFinite) step = 0;
-
-  double hhAt(int i) => cardH * scaleOf(i, fit, uniform) * 0.5;
-  var ay = (floor + hhAt(0) - (0 - focus) * step) / stageH;
-  if (!ay.isFinite) ay = 0.46;
-  for (var i = 1; i < n; i++) {
-    final top = stageH * ay + (i - focus) * step - hhAt(i);
-    if (top < floor) ay += (floor - top) / stageH;
-  }
-  return _Metrics(
-    stepX: 0,
-    stepY: step,
-    ax: ax,
-    ay: ay,
-    fit: fit,
-    uniform: uniform,
-  );
-}
+const _fanPadTop = 8.0;
+const _fanNameSize = 16.0;
+const _fanNameHeight = 1.15;
+const _fanDetailSize = 13.0;
+const _fanDetailHeight = 1.2;
 
 double _ease(double u) {
   final t = u.clamp(0.0, 1.0).toDouble();
@@ -1511,63 +1470,58 @@ class _FacePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.save();
-    canvas.scale(size.width / 400, size.height / 680);
+    final width = size.width;
+    final height = size.height;
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()..color = back ? palette.field : palette.paper,
+    );
+    // A wash on the left keeps each peek colored. The accent sits on the
+    // right, where the front card is fully visible.
+    final wash = Path()
+      ..moveTo(0, 0)
+      ..lineTo(width * 0.46, 0)
+      ..cubicTo(
+        width * 0.30,
+        height * 0.28,
+        width * 0.34,
+        height * 0.72,
+        width * 0.52,
+        height,
+      )
+      ..lineTo(0, height)
+      ..close();
+    canvas.drawPath(
+      wash,
+      Paint()..color = back ? palette.sweep : palette.panel,
+    );
+    final accent = Offset(width * 0.78, height * 0.62);
+    final radius = height * 0.22;
+    canvas.drawCircle(
+      accent,
+      radius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(3, height * 0.035)
+        ..color = palette.ring,
+    );
+    canvas.drawCircle(accent, radius * 0.34, Paint()..color = palette.dot);
     if (back) {
-      canvas.drawRect(
-        const Rect.fromLTWH(0, 0, 400, 680),
-        Paint()..color = palette.field,
-      );
-      final sweep = Path()
-        ..moveTo(0, 0)
-        ..lineTo(269, 0)
-        ..cubicTo(244, 81, 200, 182, 150, 222)
-        ..cubicTo(94, 266, 44, 239, 0, 316)
-        ..close();
-      canvas.drawPath(sweep, Paint()..color = palette.sweep);
-      for (var n = 0; n < palette.squares.length; n++) {
+      for (var n = 0; n < palette.squares.length && n < 4; n++) {
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-            Rect.fromLTWH(284 + (n % 2) * 46, 333 + (n ~/ 2) * 46, 32, 32),
+            Rect.fromLTWH(
+              width * 0.62 + (n % 2) * height * 0.16,
+              height * 0.16 + (n ~/ 2) * height * 0.18,
+              height * 0.11,
+              height * 0.11,
+            ),
             const Radius.circular(3),
           ),
           Paint()..color = palette.squares[n],
         );
       }
-    } else {
-      canvas.drawRect(
-        const Rect.fromLTWH(0, 0, 400, 680),
-        Paint()..color = palette.paper,
-      );
-      final panel = Path()
-        ..moveTo(0, 0)
-        ..lineTo(179, 0)
-        ..cubicTo(206, 47, 230, 162, 205, 316)
-        ..cubicTo(183, 454, 154, 572, 123, 680)
-        ..lineTo(0, 680)
-        ..close();
-      canvas.drawPath(panel, Paint()..color = palette.panel);
-      final notch = Path()
-        ..moveTo(123, 680)
-        ..cubicTo(156, 680, 183, 586, 199, 482)
-        ..cubicTo(179, 572, 150, 680, 123, 680)
-        ..close();
-      canvas.drawPath(notch, Paint()..color = palette.notch);
-      canvas.drawCircle(
-        const Offset(74, 199),
-        42,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 8
-          ..color = palette.ring,
-      );
-      canvas.drawCircle(
-        const Offset(74, 199),
-        12,
-        Paint()..color = palette.dot,
-      );
     }
-    canvas.restore();
   }
 
   @override
