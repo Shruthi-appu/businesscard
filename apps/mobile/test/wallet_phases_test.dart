@@ -47,6 +47,25 @@ void main() {
     );
     expect(find.text('Ada Lovelace'), findsWidgets);
 
+    final menu = tester.getRect(find.byKey(const ValueKey('wallet-menu')));
+    final signOut = tester.getRect(find.text('Sign out'));
+    final add = tester.getRect(find.text('Add+'));
+    final width = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byKey(const ValueKey('wallet-menu')),
+      ),
+      findsOneWidget,
+    );
+    expect(menu.left, lessThan(32));
+    expect(menu.center.dx, lessThan(width * 0.25));
+    expect(menu.right, lessThan(signOut.left));
+    expect(menu.bottom, lessThan(add.top));
+    expect(menu.overlaps(add), isFalse);
+    expect(menu.width, greaterThanOrEqualTo(44));
+    expect(menu.height, greaterThanOrEqualTo(44));
+
     await tester.tap(find.byKey(const ValueKey('wallet-menu')));
     await tester.pumpAndSettle();
     expect(find.text('Export my data'), findsOneWidget);

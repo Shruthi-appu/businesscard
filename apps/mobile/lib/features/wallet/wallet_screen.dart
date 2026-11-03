@@ -68,10 +68,11 @@ class WalletScreen extends ConsumerWidget {
         final lines = snapshot.cards.isEmpty
             ? snapshot.titles
             : snapshot.cards.map((card) => card.label).toList();
-        CardsStage stage({Widget? menu}) {
+        CardsStage stage({Widget? menu, WalletMenuHandle? menuHandle}) {
           return CardsStage(
             fromCache: ready.fromCache,
             menu: menu,
+            menuHandle: menuHandle,
             onAdd: () => context.push('/wallet/new'),
             onScan: () => context.push('/wallet/scan'),
             onDesign: () => context.push('/wallet/create'),
@@ -91,18 +92,15 @@ class WalletScreen extends ConsumerWidget {
           );
         }
 
-        return SoftxuPage(
+        return _WalletHome(
           title: 'Signed in as $name',
-          trailing: iphoneApp
-              ? CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: signOut,
-                  child: const Text('Sign out'),
-                )
-              : TextButton(onPressed: signOut, child: const Text('Sign out')),
-          body: ready.fromCache
+          showMenu: !ready.fromCache,
+          onSignOut: signOut,
+          buildBody: (handle) => ready.fromCache
               ? stage()
-              : _AccountSection(builder: (menu) => stage(menu: menu)),
+              : _AccountSection(
+                  builder: (menu) => stage(menu: menu, menuHandle: handle),
+                ),
         );
       },
     );
@@ -157,6 +155,44 @@ class _SampleWallet extends ConsumerWidget {
         onDesign: () => context.push('/wallet/create'),
         passes: samplePasses(),
       ),
+    );
+  }
+}
+
+class _WalletHome extends StatefulWidget {
+  const _WalletHome({
+    required this.title,
+    required this.showMenu,
+    required this.onSignOut,
+    required this.buildBody,
+  });
+
+  final String title;
+  final bool showMenu;
+  final Future<void> Function() onSignOut;
+  final Widget Function(WalletMenuHandle handle) buildBody;
+
+  @override
+  State<_WalletHome> createState() => _WalletHomeState();
+}
+
+class _WalletHomeState extends State<_WalletHome> {
+  final _menu = WalletMenuHandle();
+
+  @override
+  Widget build(BuildContext context) {
+    final signOut = widget.onSignOut;
+    return SoftxuPage(
+      title: widget.title,
+      leading: widget.showMenu ? WalletMenuButton(onPressed: _menu.open) : null,
+      trailing: iphoneApp
+          ? CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: signOut,
+              child: const Text('Sign out'),
+            )
+          : TextButton(onPressed: signOut, child: const Text('Sign out')),
+      body: widget.buildBody(_menu),
     );
   }
 }

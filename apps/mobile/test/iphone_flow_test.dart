@@ -37,6 +37,13 @@ void main() {
       expect(find.text('Open wallet'), findsOneWidget);
       expect(find.byType(CupertinoNavigationBar), findsOneWidget);
       expect(find.text('Sign out'), findsOneWidget);
+      final menu = tester.getRect(find.byKey(const ValueKey('wallet-menu')));
+      final signOut = tester.getRect(find.text('Sign out'));
+      final bar = tester.getRect(find.byType(CupertinoNavigationBar));
+      expect(bar.contains(menu.center), isTrue);
+      expect(menu.center.dx, lessThan(bar.center.dx));
+      expect(menu.right, lessThan(signOut.left));
+      expect(menu.shortestSide, greaterThanOrEqualTo(44));
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }

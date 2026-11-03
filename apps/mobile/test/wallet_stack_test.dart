@@ -340,13 +340,16 @@ void main() {
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
+    final menuHandle = WalletMenuHandle();
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
+          appBar: AppBar(leading: WalletMenuButton(onPressed: menuHandle.open)),
           body: CardsStage(
             onAdd: _noop,
             onScan: _noop,
             onDesign: _noop,
+            menuHandle: menuHandle,
             menu: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -383,6 +386,21 @@ void main() {
     expect(find.text('Design'), findsOneWidget);
     expect(find.text('Export my data'), findsNothing);
     expect(find.text('Delete account'), findsNothing);
+
+    final menu = tester.getRect(find.byKey(const ValueKey('wallet-menu')));
+    final add = tester.getRect(find.text('Add+'));
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byKey(const ValueKey('wallet-menu')),
+      ),
+      findsOneWidget,
+    );
+    expect(menu.center.dx, lessThan(80));
+    expect(menu.width, greaterThanOrEqualTo(44));
+    expect(menu.height, greaterThanOrEqualTo(44));
+    expect(menu.bottom, lessThan(add.top));
+    expect(menu.overlaps(add), isFalse);
 
     await tester.tap(find.byKey(const ValueKey('wallet-menu')));
     await tester.pumpAndSettle();

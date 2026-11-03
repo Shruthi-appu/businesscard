@@ -1,9 +1,53 @@
 import 'dart:math' as math;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../ui/softxu_controls.dart';
 import 'card_fields.dart';
+
+/// Opens the account side menu from the header.
+class WalletMenuHandle {
+  VoidCallback? _open;
+
+  /// Slides the account menu open when a [CardsStage] is showing it.
+  void open() => _open?.call();
+
+  void bind(VoidCallback open) => _open = open;
+
+  void unbind(VoidCallback open) {
+    if (identical(_open, open)) _open = null;
+  }
+}
+
+/// Header control for [WalletMenuHandle]. Sits in the leading corner, the
+/// same kind of bar button as Sign out.
+class WalletMenuButton extends StatelessWidget {
+  const WalletMenuButton({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    const icon = Icon(Icons.menu, semanticLabel: 'Menu');
+    if (iphoneApp) {
+      return CupertinoButton(
+        key: const ValueKey('wallet-menu'),
+        padding: EdgeInsets.zero,
+        onPressed: onPressed,
+        child: icon,
+      );
+    }
+    return IconButton(
+      key: const ValueKey('wallet-menu'),
+      tooltip: 'Menu',
+      iconSize: 26,
+      onPressed: onPressed,
+      icon: icon,
+    );
+  }
+}
 
 class WalletFact {
   const WalletFact({
@@ -51,6 +95,7 @@ class CardsStage extends StatefulWidget {
     this.fromCache = false,
     this.notice,
     this.menu,
+    this.menuHandle,
   });
 
   final List<WalletPass> passes;
@@ -60,8 +105,11 @@ class CardsStage extends StatefulWidget {
   final bool fromCache;
   final String? notice;
 
-  /// Account actions. Hidden until the side menu button opens them.
+  /// Account actions. Hidden until the header menu button opens them.
   final Widget? menu;
+
+  /// Header control that opens [menu]. The stage still draws the panel.
+  final WalletMenuHandle? menuHandle;
 
   @override
   State<CardsStage> createState() => _CardsStageState();
@@ -79,6 +127,7 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   int? _halfIndex;
   int? _opened;
   var _menuOpen = false;
+  VoidCallback? _showMenu;
   double _scroll = 0;
   double _scrollFrom = 0;
   double _scrollTarget = 0;
@@ -120,10 +169,40 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
             _scroll = _scrollFrom + (_scrollTarget - _scrollFrom) * t;
           });
         });
+    _bindMenu();
+  }
+
+  @override
+  void didUpdateWidget(CardsStage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.menuHandle, widget.menuHandle) ||
+        (oldWidget.menu == null) != (widget.menu == null)) {
+      _unbindMenu(oldWidget.menuHandle);
+      _bindMenu();
+    }
+  }
+
+  void _bindMenu() {
+    final handle = widget.menuHandle;
+    if (handle == null || widget.menu == null) return;
+    void show() {
+      if (!mounted || _menuOpen) return;
+      setState(() => _menuOpen = true);
+    }
+
+    _showMenu = show;
+    handle.bind(show);
+  }
+
+  void _unbindMenu(WalletMenuHandle? handle) {
+    final show = _showMenu;
+    if (handle != null && show != null) handle.unbind(show);
+    _showMenu = null;
   }
 
   @override
   void dispose() {
+    _unbindMenu(widget.menuHandle);
     _deal.dispose();
     _half.dispose();
     _scrollAnim.dispose();
@@ -405,13 +484,6 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (widget.menu != null) ...[
-                            _MenuButton(
-                              height: btnH,
-                              onPressed: () => setState(() => _menuOpen = true),
-                            ),
-                            SizedBox(height: gap),
-                          ],
                           _Pill(
                             label: 'Add+',
                             height: btnH,
@@ -679,44 +751,6 @@ class _Pill extends StatelessWidget {
                   letterSpacing: 0.56,
                   fontWeight: FontWeight.w400,
                 ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Opens the side menu. Sits above Add, Scan, and Design.
-class _MenuButton extends StatelessWidget {
-  const _MenuButton({required this.height, required this.onPressed});
-
-  final double height;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: 'Menu',
-      child: Material(
-        key: const ValueKey('wallet-menu'),
-        color: const Color(0xFF9E2E2E),
-        shape: StadiumBorder(
-          side: BorderSide(
-            color: const Color(0xFFF4F1EA).withValues(alpha: 0.55),
-          ),
-        ),
-        child: InkWell(
-          customBorder: const StadiumBorder(),
-          onTap: onPressed,
-          child: SizedBox(
-            height: height,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Center(
-                child: Icon(Icons.menu, color: _CardsStageState._ink, size: 18),
               ),
             ),
           ),
@@ -1175,7 +1209,7 @@ _Deck _layout({
   final walletW = phone
       ? math.min(math.max(cardW, span - 30), cardW + 60)
       : math.min(460.0, viewportW * 0.42);
-  // Shift the open fan a little right so Add, Scan, Design, and the menu
+  // Shift the open fan a little right so Add, Scan, and Design
   // keep a clear hit strip. The right edge still stays on screen.
   const edge = 20.0;
   const leftGuard = 70.0;
