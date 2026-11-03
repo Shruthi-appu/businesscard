@@ -26,9 +26,11 @@ void main() {
     expect((meera.left - front.left).abs(), lessThan(2));
     expect((rohan.left - front.left).abs(), lessThan(2));
     expect((ananya.left - front.left).abs(), lessThan(2));
-    expect(meera.top, greaterThan(front.bottom - 1));
-    expect(rohan.top, greaterThan(meera.bottom - 1));
-    expect(ananya.top, greaterThan(rohan.bottom - 1));
+    expect(meera.top, lessThan(front.bottom - 12));
+    expect(rohan.top, lessThan(meera.bottom - 12));
+    expect(ananya.top, lessThan(rohan.bottom - 12));
+    expect(front.left, lessThan(14));
+    expect(front.right, greaterThan(370));
     expect((front.width - meera.width).abs(), lessThan(2));
     expect((meera.width - rohan.width).abs(), lessThan(2));
     expect(ananya.right, lessThanOrEqualTo(390));
@@ -45,9 +47,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(opened, isEmpty);
     final meeraFront = tester.getRect(find.byKey(const ValueKey('card-meera')));
+    final rohanUnder = tester.getRect(find.byKey(const ValueKey('card-rohan')));
     final arjunBack = tester.getRect(find.byKey(const ValueKey('card-arjun')));
+    expect((meeraFront.left - rohanUnder.left).abs(), lessThan(2));
     expect((meeraFront.left - arjunBack.left).abs(), lessThan(2));
-    expect(arjunBack.top, greaterThan(meeraFront.bottom - 1));
+    expect(rohanUnder.top, lessThan(meeraFront.bottom - 12));
+    expect(arjunBack.top, greaterThan(meeraFront.bottom));
 
     await tester.tap(find.text('Meera Iyer'));
     await tester.pumpAndSettle();
@@ -60,9 +65,12 @@ void main() {
     );
     await tester.pumpAndSettle();
     final rohanFront = tester.getRect(find.byKey(const ValueKey('card-rohan')));
+    final ananyaUnder = tester.getRect(find.byKey(const ValueKey('card-ananya')));
     final meeraBelow = tester.getRect(find.byKey(const ValueKey('card-meera')));
+    expect((rohanFront.left - ananyaUnder.left).abs(), lessThan(2));
     expect((rohanFront.left - meeraBelow.left).abs(), lessThan(2));
-    expect(meeraBelow.top, greaterThan(rohanFront.bottom - 1));
+    expect(ananyaUnder.top, lessThan(rohanFront.bottom - 12));
+    expect(meeraBelow.top, greaterThan(rohanFront.top));
 
     cards = [
       ...cards,
@@ -95,7 +103,7 @@ void main() {
     final nextFront = tester.getRect(find.byKey(const ValueKey('card-arjun')));
     final behind = tester.getRect(find.byKey(const ValueKey('card-meera')));
     expect((nextFront.left - behind.left).abs(), lessThan(2));
-    expect(behind.top, greaterThan(nextFront.bottom - 1));
+    expect(behind.top, lessThan(nextFront.bottom - 12));
   });
 
   testWidgets('the pile fits a narrow phone and a wide phone', (tester) async {

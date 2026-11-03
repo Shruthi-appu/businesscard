@@ -85,10 +85,10 @@ class StackedCardFrame {
 
 /// Positions [count] landscape cards in a vertical column.
 ///
-/// Every card shares the same left edge and the same size. The front card
-/// is on top. Each following card sits directly under the one above it.
-/// Cards past the fourth share the last row and stay inside [width] and
-/// [height].
+/// Every card shares the same left edge and the same wide size. The front
+/// card is on top. Each following card sits under the one above it and
+/// covers a small strip of that card's lower edge. Cards past the fourth
+/// share the last row and stay inside [width] and [height].
 List<StackedCardFrame> layoutStackedCards({
   required int count,
   required int frontIndex,
@@ -97,24 +97,22 @@ List<StackedCardFrame> layoutStackedCards({
   required double topInset,
 }) {
   if (count <= 0 || width <= 0 || height <= 0) return const [];
-  const margin = 18.0;
-  const bottomMargin = 20.0;
-  const gap = 12.0;
+  const margin = 8.0;
+  const bottomMargin = 16.0;
   final visible = math.min(count, stackedVisibleDepths);
   final availableW = math.max(1.0, width - margin * 2);
   final availableH = math.max(1.0, height - topInset - bottomMargin);
-  final gaps = math.max(0, visible - 1) * gap;
   var cardW = availableW;
   var cardH = cardW / stackedCardAspect;
-  if (cardH * visible + gaps > availableH) {
-    cardH = math.max(1.0, (availableH - gaps) / visible);
-    cardW = cardH * stackedCardAspect;
-    if (cardW > availableW) {
-      cardW = availableW;
-      cardH = cardW / stackedCardAspect;
-    }
+  var overlap = _cardOverlap(cardH);
+  var stackH = _columnHeight(cardH, overlap, visible);
+  if (stackH > availableH) {
+    cardH = _fittedCardHeight(availableH, visible);
+    cardW = math.min(availableW, cardH * stackedCardAspect);
+    cardH = cardW / stackedCardAspect;
+    overlap = _cardOverlap(cardH);
+    stackH = _columnHeight(cardH, overlap, visible);
   }
-  final stackH = cardH * visible + gaps;
   final originX = (width - cardW) / 2;
   final originY = topInset + math.max(0.0, availableH - stackH) * 0.04;
   final front = frontIndex.clamp(0, count - 1);
@@ -127,7 +125,7 @@ List<StackedCardFrame> layoutStackedCards({
         depth: depth,
         rect: Rect.fromLTWH(
           originX,
-          originY + row * (cardH + gap),
+          originY + row * (cardH - overlap),
           cardW,
           cardH,
         ),
@@ -135,6 +133,25 @@ List<StackedCardFrame> layoutStackedCards({
     );
   }
   return frames;
+}
+
+/// How much of the card above is covered. Enough to read as an overlap,
+/// and short of the name and category.
+double _cardOverlap(double cardHeight) {
+  return math.min(40.0, math.max(16.0, cardHeight * 0.22));
+}
+
+double _columnHeight(double cardHeight, double overlap, int visible) {
+  if (visible <= 1) return cardHeight;
+  return cardHeight + (visible - 1) * (cardHeight - overlap);
+}
+
+/// Card height that keeps [visible] overlapped cards inside [available].
+double _fittedCardHeight(double available, int visible) {
+  if (visible <= 1) return math.max(1.0, available);
+  final proportional = available / (visible - 0.22 * (visible - 1));
+  final overlap = _cardOverlap(proportional);
+  return (available + (visible - 1) * overlap) / visible;
 }
 
 double _ease(double u) {
@@ -235,9 +252,13 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet> {
           height: constraints.maxHeight,
           topInset: widget.topInset,
         );
-        final order = [
-          for (var index = 0; index < frames.length; index++) index,
-        ]..sort((a, b) => frames[b].depth.compareTo(frames[a].depth));
+        final order =
+            [for (var index = 0; index < frames.length; index++) index]
+              ..sort((a, b) {
+                final top = frames[a].rect.top.compareTo(frames[b].rect.top);
+                if (top != 0) return top;
+                return frames[b].depth.compareTo(frames[a].depth);
+              });
         final open = widget.reveal >= 1;
         return GestureDetector(
           key: const ValueKey('stacked-card-wallet'),

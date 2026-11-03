@@ -47,11 +47,13 @@ void main() {
       find.byKey(const ValueKey('wallet-pass-1')),
     );
     expect((graceBox.left - adaBox.left).abs(), lessThan(2));
-    expect(graceBox.top, greaterThan(adaBox.bottom - 1));
+    expect(graceBox.top, lessThan(adaBox.bottom - 12));
+    expect(graceBox.top, greaterThan(adaBox.top + 40));
+    expect(adaBox.left, lessThan(14));
+    expect(adaBox.right, greaterThan(370));
     expect((adaBox.width - graceBox.width).abs(), lessThan(2));
     expect((adaBox.height - graceBox.height).abs(), lessThan(2));
     expect(adaBox.width / adaBox.height, closeTo(2.05, 0.08));
-    expect(adaBox.left, greaterThanOrEqualTo(12));
     expect(graceBox.right, lessThanOrEqualTo(390));
     expect(adaBox.bottom, lessThanOrEqualTo(844));
     expect(tester.getTopLeft(find.text('Ada')).dy, lessThan(adaBox.top + 48));
@@ -82,7 +84,8 @@ void main() {
     );
     final adaBack = tester.getRect(find.byKey(const ValueKey('wallet-pass-0')));
     expect((graceFront.left - adaBack.left).abs(), lessThan(2));
-    expect(adaBack.top, greaterThan(graceFront.bottom - 1));
+    expect(adaBack.top, lessThan(graceFront.bottom - 12));
+    expect(adaBack.top, greaterThan(graceFront.top + 40));
 
     await tester.tap(find.text('Grace'));
     await tester.pumpAndSettle();
@@ -267,7 +270,7 @@ void main() {
     final beforeFront = tester.getRect(front);
     final beforeNext = tester.getRect(next);
     expect((beforeFront.left - beforeNext.left).abs(), lessThan(2));
-    expect(beforeNext.top, greaterThan(beforeFront.bottom - 1));
+    expect(beforeNext.top, lessThan(beforeFront.bottom - 12));
     await tester.fling(
       find.byKey(const ValueKey('stacked-card-wallet')),
       const Offset(-240, 0),
@@ -277,7 +280,7 @@ void main() {
     final afterFront = tester.getRect(front);
     final afterNext = tester.getRect(next);
     expect((afterNext.left - afterFront.left).abs(), lessThan(2));
-    expect(afterFront.top, greaterThan(afterNext.bottom - 1));
+    expect(afterFront.top, lessThan(afterNext.bottom - 12));
     expect(afterNext.height, closeTo(beforeFront.height, 2));
     expect(find.byKey(const ValueKey('open-card')), findsNothing);
 
@@ -407,7 +410,8 @@ void _expectVerticalColumn(WidgetTester tester, List<int> indexes) {
   for (var i = 0; i < rects.length - 1; i++) {
     expect((rects[i + 1].left - rects[i].left).abs(), lessThan(2));
     expect((rects[i + 1].width - rects[i].width).abs(), lessThan(2));
-    expect(rects[i + 1].top, greaterThan(rects[i].bottom - 1));
+    expect(rects[i + 1].top, lessThan(rects[i].bottom - 12));
+    expect(rects[i + 1].top, greaterThan(rects[i].top + 40));
   }
   for (final rect in rects) {
     expect(rect.left, greaterThanOrEqualTo(-1));
