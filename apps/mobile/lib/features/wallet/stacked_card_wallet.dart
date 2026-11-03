@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'business_card.dart';
+import 'card_links.dart';
 
 /// How many cards keep their own step. Deeper cards share the last step so
 /// the pile stays on screen.
@@ -163,7 +164,8 @@ double _ease(double u) {
 /// Landscape cards in a vertical column. A tap on a lower card brings that
 /// card to the top. Moving the pointer left or up brings the next card
 /// forward. Moving it right or down brings the previous card forward.
-/// A tap on the top card calls [onOpen].
+/// A tap on the top card pops that card forward and shows its details on
+/// the same card. [onOpen] runs as that pop starts.
 class StackedBusinessCardWallet extends StatefulWidget {
   const StackedBusinessCardWallet({
     super.key,
@@ -174,6 +176,7 @@ class StackedBusinessCardWallet extends StatefulWidget {
     required this.tuckWidth,
     required this.tuckHeight,
     this.onOpen,
+    this.linkLauncher,
     this.interactive = true,
   });
 
@@ -186,6 +189,7 @@ class StackedBusinessCardWallet extends StatefulWidget {
   final double tuckWidth;
   final double tuckHeight;
   final ValueChanged<int>? onOpen;
+  final CardLinkLauncher? linkLauncher;
   final bool interactive;
 
   @override
@@ -193,10 +197,67 @@ class StackedBusinessCardWallet extends StatefulWidget {
       _StackedBusinessCardWalletState();
 }
 
-class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet> {
+class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet>
+    with SingleTickerProviderStateMixin {
   String? _frontId;
+  String? _popId;
   double _dragX = 0;
   double _dragY = 0;
+  double _tapTravel = 0;
+  var _mutePop = false;
+  late final AnimationController _pop;
+
+  @override
+  void initState() {
+    super.initState();
+    _pop =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 520),
+          )
+          ..addListener(() {
+            if (mounted && !_mutePop) setState(() {});
+          })
+          ..addStatusListener((status) {
+            if (_mutePop ||
+                status != AnimationStatus.dismissed ||
+                _popId == null) {
+              return;
+            }
+            setState(() => _popId = null);
+          });
+  }
+
+  @override
+  void didUpdateWidget(StackedBusinessCardWallet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final lost =
+        _popId != null && widget.cards.every((card) => card.id != _popId);
+    if (_popId != null && (lost || widget.reveal < 1 || !widget.interactive)) {
+      _mutePop = true;
+      _pop.stop();
+      _pop.value = 0;
+      _popId = null;
+      _mutePop = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pop.dispose();
+    super.dispose();
+  }
+
+  double get _moveT =>
+      Curves.easeOutCubic.transform(_pop.value.clamp(0.0, 1.0));
+
+  double get _detailT {
+    return const Interval(
+      0.18,
+      0.78,
+      curve: Curves.easeOut,
+    ).transform(_pop.value.clamp(0.0, 1.0));
+  }
 
   int get _front {
     final cards = widget.cards;
@@ -215,6 +276,48 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet> {
     final count = widget.cards.length;
     if (count == 0) return;
     _setFront((_front + delta + count) % count);
+  }
+
+  void _noteDown() => _tapTravel = 0;
+
+  void _noteMove(PointerMoveEvent event) {
+    _tapTravel += event.delta.distance;
+  }
+
+  /// A press that stays inside the touch slop opens the card. A longer
+  /// move is a swipe, handled by the pile.
+  void _noteUp(int index, int depth) {
+    final travel = _tapTravel;
+    _tapTravel = 0;
+    if (travel > 18 || _popId != null) return;
+    if (depth == 0) {
+      _openFront(index);
+    } else {
+      _setFront(index);
+    }
+  }
+
+  void _openFront(int index) {
+    if (index < 0 || index >= widget.cards.length) return;
+    final id = widget.cards[index].id;
+    if (_popId == id) return;
+    setState(() => _popId = id);
+    _pop.forward(from: 0);
+    widget.onOpen?.call(index);
+  }
+
+  void _closePop() {
+    if (_popId == null || _pop.status == AnimationStatus.reverse) return;
+    _pop.reverse();
+  }
+
+  Rect _popRect(double width, double height) {
+    const side = 12.0;
+    const bottom = 16.0;
+    final top = widget.topInset + 4;
+    final cardW = math.max(1.0, width - side);
+    final cardH = math.max(1.0, height - top - bottom);
+    return Rect.fromLTWH((width - cardW) / 2, top, cardW, cardH);
   }
 
   /// Negative distance or velocity moves to the next card. Positive moves
@@ -277,45 +380,74 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet> {
                 return frames[b].depth.compareTo(frames[a].depth);
               });
         final open = widget.reveal >= 1;
+        final canDrag = open && widget.interactive && _popId == null;
+        final poppedAt = _popId == null
+            ? -1
+            : widget.cards.indexWhere((card) => card.id == _popId);
         return GestureDetector(
           key: const ValueKey('stacked-card-wallet'),
           dragStartBehavior: DragStartBehavior.down,
           behavior: open && widget.interactive
               ? HitTestBehavior.translucent
               : HitTestBehavior.deferToChild,
-          onHorizontalDragUpdate: open && widget.interactive
+          onHorizontalDragUpdate: canDrag
               ? (details) => _dragX += details.delta.dx
               : null,
-          onHorizontalDragEnd: open && widget.interactive
+          onHorizontalDragEnd: canDrag
               ? (details) {
                   _finishDrag(_dragX, details.primaryVelocity ?? 0);
                   _dragX = 0;
                 }
               : null,
-          onHorizontalDragCancel: open && widget.interactive
-              ? () => _dragX = 0
-              : null,
-          onVerticalDragUpdate: open && widget.interactive
+          onHorizontalDragCancel: canDrag ? () => _dragX = 0 : null,
+          onVerticalDragUpdate: canDrag
               ? (details) => _dragY += details.delta.dy
               : null,
-          onVerticalDragEnd: open && widget.interactive
+          onVerticalDragEnd: canDrag
               ? (details) {
                   _finishDrag(_dragY, details.primaryVelocity ?? 0);
                   _dragY = 0;
                 }
               : null,
-          onVerticalDragCancel: open && widget.interactive
-              ? () => _dragY = 0
-              : null,
+          onVerticalDragCancel: canDrag ? () => _dragY = 0 : null,
           child: Stack(
             clipBehavior: Clip.none,
             children: [
               for (final index in order)
+                if (index != poppedAt)
+                  _placedCard(
+                    index: index,
+                    rect: _frameRect(frames[index], index),
+                    depth: frames[index].depth,
+                    animate: open,
+                    popped: false,
+                    stageWidth: constraints.maxWidth,
+                    stageHeight: constraints.maxHeight,
+                  ),
+              if (poppedAt >= 0)
+                Positioned.fill(
+                  child: GestureDetector(
+                    key: const ValueKey('card-pop-scrim'),
+                    onTap: _closePop,
+                    child: ColoredBox(
+                      color: Color.fromRGBO(
+                        15,
+                        15,
+                        15,
+                        0.42 * _pop.value.clamp(0.0, 1.0),
+                      ),
+                    ),
+                  ),
+                ),
+              if (poppedAt >= 0)
                 _placedCard(
-                  index: index,
-                  rect: _frameRect(frames[index], index),
-                  depth: frames[index].depth,
-                  animate: open,
+                  index: poppedAt,
+                  rect: _frameRect(frames[poppedAt], poppedAt),
+                  depth: 0,
+                  animate: false,
+                  popped: true,
+                  stageWidth: constraints.maxWidth,
+                  stageHeight: constraints.maxHeight,
                 ),
             ],
           ),
@@ -329,48 +461,163 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet> {
     required Rect rect,
     required int depth,
     required bool animate,
+    required bool popped,
+    required double stageWidth,
+    required double stageHeight,
   }) {
     final card = widget.cards[index];
     final open = widget.reveal >= 1 && widget.interactive;
+    final shown = popped
+        ? Rect.lerp(rect, _popRect(stageWidth, stageHeight), _moveT)!
+        : rect;
+    final dim = !popped && _popId != null
+        ? (1 - 0.5 * _pop.value).clamp(0.5, 1.0)
+        : 1.0;
+    final scale = popped ? 1 + 0.04 * math.sin(math.pi * _moveT) : 1.0;
+    final face = Transform.scale(
+      scale: scale,
+      child: popped
+          ? _openedFace(card)
+          : Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: open ? (_) => _noteDown() : null,
+              onPointerMove: open ? _noteMove : null,
+              onPointerUp: open ? (_) => _noteUp(index, depth) : null,
+              child: BusinessCardWidget(
+                name: card.name,
+                designation: card.designation,
+                background: card.background,
+                elevation: depth == 0 ? 10 : 3,
+              ),
+            ),
+    );
     final child = IgnorePointer(
       ignoring: !open,
-      child: GestureDetector(
-        key: ValueKey(card.id),
-        behavior: HitTestBehavior.opaque,
-        onTap: open
-            ? () {
-                if (depth == 0) {
-                  widget.onOpen?.call(index);
-                } else {
-                  _setFront(index);
-                }
-              }
-            : null,
-        child: BusinessCardWidget(
-          name: card.name,
-          designation: card.designation,
-          background: card.background,
-          elevation: depth == 0 ? 10 : 3,
-        ),
+      child: Opacity(
+        opacity: dim,
+        child: KeyedSubtree(key: ValueKey(card.id), child: face),
       ),
     );
     if (!animate) {
       return Positioned(
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height,
+        left: shown.left,
+        top: shown.top,
+        width: shown.width,
+        height: shown.height,
         child: child,
       );
     }
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 320),
       curve: Curves.easeOutCubic,
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height,
+      left: shown.left,
+      top: shown.top,
+      width: shown.width,
+      height: shown.height,
       child: child,
+    );
+  }
+
+  Widget _openedFace(BusinessCardData card) {
+    final lines = [
+      for (final detail in card.details)
+        if (detail.value.trim().isNotEmpty) detail,
+    ];
+    final role = card.designation.trim();
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: card.background,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0x40241C19),
+            blurRadius: 16 + 14 * _moveT,
+            offset: Offset(0, 8 + 8 * _moveT),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 12, 12, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        card.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: stackedCardInk,
+                          fontSize: 28,
+                          height: 1.1,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    key: const ValueKey('card-pop-close'),
+                    tooltip: 'Close',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: _closePop,
+                    icon: const Icon(Icons.close, color: stackedCardInk),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: Opacity(
+                  opacity: _detailT,
+                  child: ListView(
+                    primary: false,
+                    padding: const EdgeInsets.only(top: 8, right: 8),
+                    children: [
+                      if (lines.isEmpty && role.isNotEmpty)
+                        Text(
+                          role,
+                          style: const TextStyle(
+                            color: Color(0xC7241C19),
+                            fontSize: 18,
+                            height: 1.15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      for (final line in lines)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: CardFactRow(
+                            field: line.field,
+                            value: line.value,
+                            extra: line.extra,
+                            launcher: widget.linkLauncher,
+                            valueStyle: const TextStyle(
+                              color: stackedCardInk,
+                              fontSize: 16,
+                              height: 1.25,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            extraStyle: const TextStyle(
+                              color: Color(0xA3241C19),
+                              fontSize: 12,
+                              height: 1.2,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

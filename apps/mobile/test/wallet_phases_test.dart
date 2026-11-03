@@ -103,12 +103,17 @@ void main() {
       );
       await tester.pumpAndSettle();
     }
+    final ada = find.byKey(const ValueKey('wallet-pass-20'));
+    final before = tester.getSize(ada);
     await tester.tap(find.text('Ada Lovelace'));
     await tester.pumpAndSettle();
-    expect(find.text('ada@example.com'), findsWidgets);
     expect(find.text('Ada Lovelace'), findsWidgets);
-    await tester.pageBack();
+    expect(find.text('Analytical Engines'), findsWidgets);
+    expect(tester.getSize(ada).height, greaterThan(before.height + 40));
+    expect(find.byKey(const ValueKey('card-pop-close')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('card-pop-close')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('card-pop-close')), findsNothing);
     expect(find.text('Analytical Engines'), findsWidgets);
 
     await tester.ensureVisible(find.text('Scan'));

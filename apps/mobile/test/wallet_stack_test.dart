@@ -92,8 +92,12 @@ void main() {
     expect(find.text('Design'), findsWidgets);
     expect(find.text('Name'), findsNothing);
     expect(find.text('Business category'), findsNothing);
-    expect(find.byTooltip('Back'), findsOneWidget);
-    await tester.tap(find.byTooltip('Back'));
+    expect(find.byKey(const ValueKey('card-pop-close')), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('wallet-pass-1'))).height,
+      greaterThan(graceFront.height + 40),
+    );
+    await tester.tap(find.byKey(const ValueKey('card-pop-close')));
     await tester.pumpAndSettle();
     expect(
       tester.getRect(find.byKey(const ValueKey('wallet-pass-1'))).height,
@@ -102,12 +106,12 @@ void main() {
 
     await tester.tap(find.text('Ada'));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('Back'), findsNothing);
+    expect(find.byKey(const ValueKey('card-pop-close')), findsNothing);
     await tester.tap(find.text('Ada'));
     await tester.pumpAndSettle();
     expect(find.text('Studio'), findsOneWidget);
     expect(find.text('Name'), findsNothing);
-    expect(find.byTooltip('Back'), findsOneWidget);
+    expect(find.byKey(const ValueKey('card-pop-close')), findsOneWidget);
   });
 
   testWidgets('tapping the wallet deals the cards out one after another', (
@@ -186,13 +190,29 @@ void main() {
     await tester.tap(find.text('Open wallet'));
     await tester.pumpAndSettle();
 
+    final before = tester.getSize(find.byKey(const ValueKey('wallet-pass-0')));
     await tester.tap(find.text('Ada'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 220));
+    final mid = tester.getSize(find.byKey(const ValueKey('wallet-pass-0')));
+    expect(mid.height, greaterThan(before.height + 30));
     await tester.pumpAndSettle();
+    final opened = tester.getSize(find.byKey(const ValueKey('wallet-pass-0')));
+    expect(opened.height, greaterThan(mid.height));
     expect(find.text('Studio'), findsOneWidget);
     expect(find.text('Name'), findsNothing);
     expect(find.text('Business category'), findsNothing);
-    expect(find.byTooltip('Back'), findsOneWidget);
-    expect(find.text('Close wallet'), findsNothing);
+    expect(find.byKey(const ValueKey('card-pop-close')), findsOneWidget);
+    expect(find.text('Close wallet'), findsOneWidget);
+    expect(find.byTooltip('Back'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('card-pop-close')));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(find.byKey(const ValueKey('wallet-pass-0'))).height,
+      closeTo(before.height, 2),
+    );
+    expect(find.text('Close wallet'), findsOneWidget);
   });
 
   testWidgets('an open sample card shows values and icons without titles', (

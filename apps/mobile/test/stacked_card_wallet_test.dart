@@ -57,6 +57,14 @@ void main() {
     await tester.tap(find.text('Meera Iyer'));
     await tester.pumpAndSettle();
     expect(opened, 'Meera Iyer');
+    expect(find.byKey(const ValueKey('card-pop-close')), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('card-meera'))).height,
+      greaterThan(meeraFront.height + 80),
+    );
+    await tester.tap(find.byKey(const ValueKey('card-pop-close')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('card-pop-close')), findsNothing);
 
     await tester.fling(
       find.byKey(const ValueKey('stacked-card-wallet')),
@@ -65,7 +73,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     final rohanFront = tester.getRect(find.byKey(const ValueKey('card-rohan')));
-    final ananyaUnder = tester.getRect(find.byKey(const ValueKey('card-ananya')));
+    final ananyaUnder = tester.getRect(
+      find.byKey(const ValueKey('card-ananya')),
+    );
     final meeraBelow = tester.getRect(find.byKey(const ValueKey('card-meera')));
     expect((rohanFront.left - ananyaUnder.left).abs(), lessThan(2));
     expect((rohanFront.left - meeraBelow.left).abs(), lessThan(2));
@@ -125,6 +135,10 @@ void main() {
     await nudge.moveBy(const Offset(0, -12));
     await nudge.up();
     await tester.pumpAndSettle();
+    if (find.byKey(const ValueKey('card-pop-close')).evaluate().isNotEmpty) {
+      await tester.tap(find.byKey(const ValueKey('card-pop-close')));
+      await tester.pumpAndSettle();
+    }
     expect(tester.getRect(arjun).top, lessThan(tester.getRect(meera).top));
 
     final lift = await tester.startGesture(tester.getCenter(arjun));
@@ -136,6 +150,65 @@ void main() {
       (tester.getRect(meera).left - tester.getRect(arjun).left).abs(),
       lessThan(2),
     );
+  });
+
+  testWidgets('the front card pops open and shows its details', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    const cards = [
+      BusinessCardData(
+        id: 'card-arjun',
+        name: 'Arjun Menon',
+        designation: 'Lawyer',
+        background: Color(0xFFE4D8F6),
+        details: [
+          CardFaceDetail(field: 'address', value: '90 Mahatma Gandhi Road'),
+          CardFaceDetail(field: 'website', value: 'https://menon.example'),
+        ],
+      ),
+      BusinessCardData(
+        id: 'card-meera',
+        name: 'Meera Iyer',
+        designation: 'Studio Lead',
+        background: Color(0xFFF9D5E2),
+      ),
+    ];
+    await tester.pumpWidget(_host(cards, onOpen: (_) {}));
+    await tester.pumpAndSettle();
+
+    final card = find.byKey(const ValueKey('card-arjun'));
+    final before = tester.getSize(card);
+    await tester.tap(find.text('Arjun Menon'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    final mid = tester.getSize(card);
+    expect(mid.height, greaterThan(before.height + 40));
+    expect(mid.height, lessThan(before.height + 700));
+    expect(find.text('90 Mahatma Gandhi Road'), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    final opened = tester.getSize(card);
+    expect(opened.height, greaterThan(mid.height));
+    expect(opened.width, greaterThan(before.width - 2));
+    expect(find.byKey(const ValueKey('card-link-website')), findsOneWidget);
+    expect(find.text('Address'), findsNothing);
+    expect(find.text('Website'), findsNothing);
+    expect(
+      tester.getRect(card).top,
+      lessThan(tester.getRect(find.byKey(const ValueKey('card-meera'))).top),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('card-pop-close')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(tester.getSize(card).height, lessThan(opened.height - 40));
+    await tester.pumpAndSettle();
+    expect(tester.getSize(card).height, closeTo(before.height, 2));
+    expect(find.text('90 Mahatma Gandhi Road'), findsNothing);
+    expect(find.byKey(const ValueKey('card-pop-close')), findsNothing);
   });
 
   testWidgets('the pile fits a narrow phone and a wide phone', (tester) async {

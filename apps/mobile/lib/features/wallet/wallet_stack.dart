@@ -89,7 +89,7 @@ class WalletPass {
 /// edge of the one above it. A tap on a lower card brings it to the top.
 /// Moving the pointer left or up brings the next card forward. Moving
 /// it right or down brings the previous card forward. A tap on the top
-/// card opens its detail page.
+/// card pops that card out and shows its details on the same card.
 class CardsStage extends StatefulWidget {
   const CardsStage({
     super.key,
@@ -136,12 +136,10 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   int? _hover;
   int? _halfIndex;
 
-  /// Movement past this counts as a drag, so the fan scrolls and the card
-  /// does not half-open or open. Kept inside the tap slop (18px).
+  /// Movement past this scrolls the fan instead of counting as a tap.
   static const _pressSlop = 16.0;
   double _pressTravel = 0;
   double _pressDy = 0;
-  bool _pressDrag = false;
   var _menuOpen = false;
   VoidCallback? _showMenu;
   double _scroll = 0;
@@ -269,7 +267,6 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   void _onFanPointerDown(PointerDownEvent event) {
     _pressTravel = 0;
     _pressDy = 0;
-    _pressDrag = false;
   }
 
   void _onFanPointerMove(PointerMoveEvent event) {
@@ -281,46 +278,7 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     }
     final dy = _pressDy + event.delta.dy;
     _pressDy = 0;
-    _pressDrag = true;
     if (dy != 0) _nudgeScroll(dy);
-  }
-
-  /// A press that is not a drag opens the detail for [index].
-  void _pressCard(int index) {
-    if (_pressDrag || _intro < 1 || _menuOpen) return;
-    if (index < 0 || index >= widget.passes.length) return;
-    final pass = widget.passes[index];
-    final open = pass.onOpen;
-    if (open != null) {
-      open();
-      return;
-    }
-    final facts = <WalletFact>[
-      for (final fact in pass.facts)
-        if (fact.value.trim().isNotEmpty) fact,
-    ];
-    if (facts.isEmpty && pass.label.isNotEmpty) {
-      facts.add(WalletFact(field: 'name', label: 'Name', value: pass.label));
-    }
-    final category = pass.detail?.trim() ?? '';
-    if (facts.length < 2 && category.isNotEmpty) {
-      facts.add(
-        WalletFact(
-          field: 'category',
-          label: 'Business category',
-          value: category,
-        ),
-      );
-    }
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => _PassDetailPage(
-          title: pass.label.isEmpty ? 'Card' : pass.label,
-          facts: facts,
-          openLink: widget.openLink,
-        ),
-      ),
-    );
   }
 
   void _setHover(int? index) {
@@ -501,6 +459,14 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
               background:
                   businessCardBackgrounds[index %
                       businessCardBackgrounds.length],
+              details: [
+                for (final fact in widget.passes[index].facts)
+                  CardFaceDetail(
+                    field: fact.field,
+                    value: fact.value,
+                    extra: fact.extra,
+                  ),
+              ],
             ),
         ];
 
@@ -538,7 +504,7 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
                                 tuckWidth: tuckWidth,
                                 tuckHeight: tuckHeight,
                                 interactive: done && !_menuOpen,
-                                onOpen: _pressCard,
+                                linkLauncher: widget.openLink,
                               ),
                             ),
                             if (showWallet) _walletFront(deck, stageW, stageH),
@@ -1238,40 +1204,4 @@ class _StitchPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Values and icons for one card. Field titles stay off the page.
-class _PassDetailPage extends StatelessWidget {
-  const _PassDetailPage({
-    required this.title,
-    required this.facts,
-    required this.openLink,
-  });
-
-  final String title;
-  final List<WalletFact> facts;
-  final CardLinkLauncher? openLink;
-
-  @override
-  Widget build(BuildContext context) {
-    return SoftxuPage(
-      title: title,
-      leading: phaseBack(context),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          for (final fact in facts)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: CardFactRow(
-                field: fact.field,
-                value: fact.value,
-                extra: fact.extra,
-                launcher: openLink,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
 }
