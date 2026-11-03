@@ -23,7 +23,7 @@ Local infrastructure is Docker Compose: Postgres 16, Redis 7, MinIO, and Elastic
 | `GET /health`                                                                     | Postgres, Redis, storage, and queue                                    |
 | `GET /docs`                                                                       | Swagger, off when `NODE_ENV=production`                                |
 | Web `/register`, `/login`, `/wallet`, `/c/[slug]`, `/s/[token]`, `/exchange/[id]` | Working, with loading, empty, validation, denied, and network states   |
-| Flutter                                                                           | iPhone and Android: register, sign in, wallet, saved-card read cache   |
+| Flutter                                                                           | Android and iPhone: register, sign in, the IncardIt wallet, saved-card read cache |
 | Image worker                                                                      | Orient, contrast, thumbnail, and grounded fields. Processing stays off |
 
 ## Local setup
@@ -47,7 +47,14 @@ cd apps/mobile
 flutter run --dart-define=API_ORIGIN=http://localhost:3001
 ```
 
-Use `http://10.0.2.2:3001` from an Android emulator. On a Mac with Xcode, `flutter run -d ios` installs the iPhone app, which uses the iOS interface. A physical iPhone needs the computer's LAN address in `API_ORIGIN`, because `localhost` on the phone is the phone itself. This Linux environment cannot compile the iOS app. Debug builds allow local HTTP. A release build expects HTTPS.
+Android:
+
+```bash
+cd apps/mobile
+flutter run -d android --dart-define=API_ORIGIN=http://10.0.2.2:3001
+```
+
+`10.0.2.2` is the computer as seen from an Android emulator. A physical phone needs the computer's LAN address. The Android app is portrait-only and uses the Material interface. On a Mac with Xcode, `flutter run -d ios` installs the iPhone app, which uses the iOS interface. A physical iPhone needs the computer's LAN address in `API_ORIGIN`, because `localhost` on the phone is the phone itself. This Linux environment cannot compile the iOS app. Debug builds allow cleartext HTTP. A release build expects HTTPS.
 
 Empty `S3_ACCESS_KEY_ID` or `S3_SECRET_ACCESS_KEY` selects the in-memory storage adapter. An empty `SQS_ENDPOINT` selects the in-memory queue. Fill those values, and the MinIO and ElasticMQ URLs in `.env.example`, when you want the Compose services. ElasticMQ does not authenticate; the client sends a non-secret local placeholder only when a key is blank and an endpoint is set.
 

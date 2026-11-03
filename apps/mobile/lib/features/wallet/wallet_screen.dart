@@ -141,13 +141,7 @@ class _SampleWallet extends ConsumerWidget {
 
     return SoftxuPage(
       title: 'Signed in as Member',
-      trailing: iphoneApp
-          ? CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: signOut,
-              child: const Text('Sign out'),
-            )
-          : TextButton(onPressed: signOut, child: const Text('Sign out')),
+      trailing: _signOutButton(signOut),
       body: CardsStage(
         notice: notice,
         onAdd: () => context.push('/wallet/new'),
@@ -185,13 +179,7 @@ class _WalletHomeState extends State<_WalletHome> {
     return SoftxuPage(
       title: widget.title,
       leading: widget.showMenu ? WalletMenuButton(onPressed: _menu.open) : null,
-      trailing: iphoneApp
-          ? CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: signOut,
-              child: const Text('Sign out'),
-            )
-          : TextButton(onPressed: signOut, child: const Text('Sign out')),
+      trailing: _signOutButton(signOut),
       body: widget.buildBody(_menu),
     );
   }
@@ -354,6 +342,25 @@ class _ConfirmDelete extends StatelessWidget {
       ],
     );
   }
+}
+
+Widget _signOutButton(Future<void> Function() onPressed) {
+  if (iphoneApp) {
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      onPressed: onPressed,
+      child: const Text('Sign out'),
+    );
+  }
+  return TextButton(
+    style: TextButton.styleFrom(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      minimumSize: const Size(44, 44),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    ),
+    onPressed: onPressed,
+    child: const Text('Sign out'),
+  );
 }
 
 class _Message extends StatelessWidget {

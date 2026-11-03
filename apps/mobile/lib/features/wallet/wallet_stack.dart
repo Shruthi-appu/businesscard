@@ -474,89 +474,97 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
             ? _halfIndex
             : null;
 
-        return Listener(
-          onPointerSignal: _onPointerSignal,
-          onPointerPanZoomUpdate: _onPanZoom,
-          child: MouseRegion(
-            onHover: (event) => _trackHover(event.localPosition, deck),
-            onExit: (_) => _setHover(null),
-            child: ColoredBox(
-              color: const Color(0xFFFFFFFF),
-              child: ClipRect(
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: Listener(
-                        behavior: HitTestBehavior.translucent,
-                        onPointerDown: _onFanPointerDown,
-                        onPointerMove: _onFanPointerMove,
-                        child: Stack(
-                          children: [
-                            const Positioned.fill(child: SizedBox.expand()),
-                            if (showWallet) _walletBack(deck, stageW, stageH),
-                            for (final placed in deck.cards)
-                              if (placed.index != openingIndex)
-                                _card(placed, deck),
-                            if (openingIndex != null &&
-                                openingIndex < deck.cards.length)
-                              _card(deck.cards[openingIndex], deck),
-                            if (showWallet) _walletFront(deck, stageW, stageH),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: deck.wordmarkTop,
-                      left: 12,
-                      right: 12,
-                      child: _WalletHeader(
-                        wordmarkSize: deck.wordmarkSize,
-                        buttonHeight: deck.buttonHeight,
-                        buttonGap: deck.buttonGap,
-                        buttonPad: deck.buttonPad,
-                        onAdd: widget.onAdd,
-                        onScan: widget.onScan,
-                        onDesign: widget.onDesign,
-                      ),
-                    ),
-                    if (widget.fromCache || widget.notice != null)
-                      Positioned(
-                        top: deck.wordmarkTop + deck.headerHeight + 4,
-                        left: 24,
-                        right: 24,
-                        child: Text(
-                          widget.fromCache
-                              ? 'Saved on this device. These cards may be out of date.'
-                              : widget.notice!,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    Positioned(
-                      right: phone ? 12 : 18,
-                      top: deck.floor + 8,
-                      child: _Pill(
-                        label: label,
-                        height: phone ? 36 : 40,
-                        scale: 1,
-                        onPressed: _deal.isAnimating
-                            ? null
-                            : () {
-                                if (_intro >= 1) {
-                                  _close();
-                                } else {
-                                  _open();
-                                }
-                              },
-                      ),
-                    ),
-                    if (_menuOpen && widget.menu != null)
+        return PopScope(
+          canPop: !_menuOpen,
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop || !_menuOpen) return;
+            setState(() => _menuOpen = false);
+          },
+          child: Listener(
+            onPointerSignal: _onPointerSignal,
+            onPointerPanZoomUpdate: _onPanZoom,
+            child: MouseRegion(
+              onHover: (event) => _trackHover(event.localPosition, deck),
+              onExit: (_) => _setHover(null),
+              child: ColoredBox(
+                color: const Color(0xFFFFFFFF),
+                child: ClipRect(
+                  child: Stack(
+                    children: [
                       Positioned.fill(
-                        child: _SideMenu(
-                          onClose: () => setState(() => _menuOpen = false),
-                          child: widget.menu!,
+                        child: Listener(
+                          behavior: HitTestBehavior.translucent,
+                          onPointerDown: _onFanPointerDown,
+                          onPointerMove: _onFanPointerMove,
+                          child: Stack(
+                            children: [
+                              const Positioned.fill(child: SizedBox.expand()),
+                              if (showWallet) _walletBack(deck, stageW, stageH),
+                              for (final placed in deck.cards)
+                                if (placed.index != openingIndex)
+                                  _card(placed, deck),
+                              if (openingIndex != null &&
+                                  openingIndex < deck.cards.length)
+                                _card(deck.cards[openingIndex], deck),
+                              if (showWallet)
+                                _walletFront(deck, stageW, stageH),
+                            ],
+                          ),
                         ),
                       ),
-                  ],
+                      Positioned(
+                        top: deck.wordmarkTop,
+                        left: 12,
+                        right: 12,
+                        child: _WalletHeader(
+                          wordmarkSize: deck.wordmarkSize,
+                          buttonHeight: deck.buttonHeight,
+                          buttonGap: deck.buttonGap,
+                          buttonPad: deck.buttonPad,
+                          onAdd: widget.onAdd,
+                          onScan: widget.onScan,
+                          onDesign: widget.onDesign,
+                        ),
+                      ),
+                      if (widget.fromCache || widget.notice != null)
+                        Positioned(
+                          top: deck.wordmarkTop + deck.headerHeight + 4,
+                          left: 24,
+                          right: 24,
+                          child: Text(
+                            widget.fromCache
+                                ? 'Saved on this device. These cards may be out of date.'
+                                : widget.notice!,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      Positioned(
+                        right: phone ? 12 : 18,
+                        top: deck.floor + 8,
+                        child: _Pill(
+                          label: label,
+                          height: phone ? 36 : 40,
+                          scale: 1,
+                          onPressed: _deal.isAnimating
+                              ? null
+                              : () {
+                                  if (_intro >= 1) {
+                                    _close();
+                                  } else {
+                                    _open();
+                                  }
+                                },
+                        ),
+                      ),
+                      if (_menuOpen && widget.menu != null)
+                        Positioned.fill(
+                          child: _SideMenu(
+                            onClose: () => setState(() => _menuOpen = false),
+                            child: widget.menu!,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),

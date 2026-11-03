@@ -54,7 +54,16 @@ class SoftxuField extends StatelessWidget {
       keyboardType: keyboardType,
       autofillHints: autofillHints,
       onChanged: onChanged,
-      decoration: InputDecoration(labelText: caption),
+      decoration: InputDecoration(
+        labelText: caption,
+        filled: true,
+        fillColor: const Color(0xFFFFFFFF),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE4D9C8)),
+        ),
+      ),
     );
   }
 }
@@ -77,7 +86,10 @@ class SoftxuPrimaryButton extends StatelessWidget {
         child: CupertinoButton.filled(onPressed: onPressed, child: Text(label)),
       );
     }
-    return FilledButton(onPressed: onPressed, child: Text(label));
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton(onPressed: onPressed, child: Text(label)),
+    );
   }
 }
 
@@ -118,7 +130,10 @@ class SoftxuSecondaryButton extends StatelessWidget {
         ),
       );
     }
-    return OutlinedButton(onPressed: onPressed, child: Text(label));
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(onPressed: onPressed, child: Text(label)),
+    );
   }
 }
 
@@ -155,7 +170,7 @@ class SoftxuPage extends StatelessWidget {
           ? null
           : AppBar(
               leading: leading,
-              title: Text(title!),
+              title: Text(title!, maxLines: 1, overflow: TextOverflow.ellipsis),
               actions: trailing == null ? null : [trailing!],
             ),
       body: SafeArea(child: body),
