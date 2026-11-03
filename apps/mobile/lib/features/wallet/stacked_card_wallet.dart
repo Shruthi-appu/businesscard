@@ -38,7 +38,7 @@ class BusinessCardWidget extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(20, 18, 16, 14),
+      padding: const EdgeInsets.fromLTRB(22, 16, 18, 14),
       alignment: Alignment.topLeft,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,23 +49,23 @@ class BusinessCardWidget extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: stackedCardInk,
-              fontSize: 20,
-              height: 1.15,
+              fontSize: 28,
+              height: 1.1,
               fontWeight: FontWeight.w700,
-              letterSpacing: -0.2,
+              letterSpacing: -0.3,
             ),
           ),
           if (role.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
               role,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Color(0xC7241C19),
-                fontSize: 13.5,
-                height: 1.2,
-                fontWeight: FontWeight.w500,
+                fontSize: 18,
+                height: 1.15,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -100,7 +100,7 @@ List<StackedCardFrame> layoutStackedCards({
   const margin = 18.0;
   const bottomMargin = 20.0;
   const maxDxFrac = 0.40;
-  const maxDyFrac = 0.62;
+  const maxDyFrac = 0.90;
   const scaleDrop = 0.14;
   final last = math.min(count - 1, stackedVisibleDepths - 1);
   final tLast = _depthT(last);

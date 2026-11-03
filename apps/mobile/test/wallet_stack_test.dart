@@ -50,7 +50,7 @@ void main() {
     expect(graceBox.left, greaterThan(adaBox.left + 8));
     expect(adaBox.width, greaterThan(graceBox.width + 4));
     expect(adaBox.height, greaterThan(graceBox.height + 2));
-    expect(adaBox.width / adaBox.height, closeTo(1.62, 0.08));
+    expect(adaBox.width / adaBox.height, closeTo(2.05, 0.08));
     expect(adaBox.left, greaterThanOrEqualTo(12));
     expect(graceBox.right, lessThanOrEqualTo(390));
     expect(adaBox.bottom, lessThanOrEqualTo(844));
@@ -426,6 +426,6 @@ void _expectLayeredPile(WidgetTester tester, List<int> indexes) {
     expect(rect.top, greaterThanOrEqualTo(-1));
     expect(rect.right, lessThanOrEqualTo(stage.width + 1));
     expect(rect.bottom, lessThanOrEqualTo(stage.height + 1));
-    expect(rect.width / rect.height, closeTo(1.62, 0.08));
+    expect(rect.width / rect.height, closeTo(2.05, 0.08));
   }
 }

@@ -39,6 +39,12 @@ void main() {
     expect(ananya.right, lessThanOrEqualTo(390));
     expect(ananya.top, greaterThanOrEqualTo(0));
     expect(front.bottom, lessThanOrEqualTo(844));
+    expect(front.width / front.height, closeTo(2.05, 0.08));
+    final nameStyle = tester.widget<Text>(find.text('Arjun Menon')).style!;
+    final roleStyle = tester.widget<Text>(find.text('Lawyer')).style!;
+    expect(nameStyle.fontSize, greaterThanOrEqualTo(28));
+    expect(roleStyle.fontSize, greaterThanOrEqualTo(18));
+    expect(nameStyle.fontSize!, greaterThan(roleStyle.fontSize!));
 
     await tester.tap(find.text('Meera Iyer'));
     await tester.pumpAndSettle();
@@ -123,7 +129,7 @@ void main() {
         expect(rect.top, greaterThanOrEqualTo(-1), reason: id);
         expect(rect.right, lessThanOrEqualTo(size.width + 1), reason: id);
         expect(rect.bottom, lessThanOrEqualTo(size.height + 1), reason: id);
-        expect(rect.width / rect.height, closeTo(1.62, 0.08), reason: id);
+        expect(rect.width / rect.height, closeTo(2.05, 0.08), reason: id);
       }
     }
   });

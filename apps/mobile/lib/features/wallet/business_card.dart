@@ -25,5 +25,5 @@ const businessCardBackgrounds = <Color>[
 
 const stackedCardInk = Color(0xFF241C19);
 
-/// Landscape card width divided by height.
-const stackedCardAspect = 1.62;
+/// Wide landscape rectangle: width divided by height.
+const stackedCardAspect = 2.05;
