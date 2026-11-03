@@ -37,7 +37,7 @@ void main() {
     expect(find.text('Open wallet'), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const ValueKey('wallet-pocket'))).width,
-      closeTo(230, 1),
+      closeTo(360, 1),
     );
 
     await tester.tap(find.text('Open wallet'));
@@ -47,7 +47,9 @@ void main() {
     final grace = tester.getCenter(find.text('Grace'));
     final cardBox = tester.getRect(find.byKey(const ValueKey('wallet-pass-0')));
     expect(grace.dy, greaterThan(ada.dy + 12));
-    expect(cardBox.width, closeTo(200, 1));
+    expect(cardBox.width, closeTo(300, 1));
+    expect(cardBox.left, greaterThanOrEqualTo(12));
+    expect(cardBox.right, lessThanOrEqualTo(378));
     expect(cardBox.height / cardBox.width, closeTo(1.7, 0.02));
     expect(tester.getTopLeft(find.text('Ada')).dy, lessThan(cardBox.top + 48));
     expect(

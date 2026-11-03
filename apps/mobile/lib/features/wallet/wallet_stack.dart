@@ -1160,8 +1160,11 @@ _Deck _layout({
   required int count,
   required double intro,
 }) {
+  // Phone cards use most of the width (about 300px on a 390px phone)
+  // and stay inside the screen. The pocket is a little wider than a card.
+  final span = math.min(viewportW, stageW);
   final cardW = phone
-      ? math.min(200.0, viewportW * 0.54)
+      ? math.min(300.0, math.max(0.0, span - 90))
       : math.min(270.0, viewportW * 0.26);
   final cardH = cardW * 1.7;
   final wordmarkSize = (viewportW * 0.1355).clamp(64.0, 168.0).toDouble();
@@ -1170,10 +1173,19 @@ _Deck _layout({
   final walletTop = stageH * (phone ? 0.50 : 0.54);
   final seam = phone ? 48.0 : 78.0;
   final walletW = phone
-      ? math.min(230.0, viewportW * 0.62)
+      ? math.min(math.max(cardW, span - 30), cardW + 60)
       : math.min(460.0, viewportW * 0.42);
+  // Shift the open fan a little right so Add, Scan, Design, and the menu
+  // keep a clear hit strip. The right edge still stays on screen.
+  const edge = 20.0;
+  const leftGuard = 70.0;
+  final maxLeft = math.max(0.0, stageW - edge - cardW);
+  final guard = math.min(leftGuard, maxLeft);
+  final centered = ((stageW - cardW) / 2).clamp(0.0, maxLeft);
+  final cardLeft = phone ? centered.clamp(guard, maxLeft) : centered;
+  final ax = stageW <= 0 ? 0.5 : (cardLeft + cardW / 2) / stageW;
   final m = _fitVertical(
-    ax: 0.5,
+    ax: ax,
     n: count,
     stageH: stageH,
     floor: floor,
