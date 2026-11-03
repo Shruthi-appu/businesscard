@@ -84,7 +84,7 @@ class WalletScreen extends ConsumerWidget {
             onScan: () => context.push('/wallet/scan'),
             onDesign: () => context.push('/wallet/create'),
             passes: [
-              ...testWalletPasses,
+              ...samplePasses((index) => context.push('/wallet/sample/$index')),
               for (var index = 0; index < lines.length; index++)
                 WalletPass(
                   label: lines[index],
@@ -155,7 +155,7 @@ class _SampleWallet extends ConsumerWidget {
         onAdd: () => context.push('/wallet/new'),
         onScan: () => context.push('/wallet/scan'),
         onDesign: () => context.push('/wallet/create'),
-        passes: testWalletPasses,
+        passes: samplePasses((index) => context.push('/wallet/sample/$index')),
       ),
     );
   }
