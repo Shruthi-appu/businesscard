@@ -97,6 +97,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ada Lovelace'));
     await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('open-card')), findsNothing);
     await tester.tap(find.text('Ada Lovelace'));
     await tester.pumpAndSettle();
     final open = find.byKey(const ValueKey('open-card'));

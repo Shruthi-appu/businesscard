@@ -138,6 +138,77 @@ void main() {
     );
   });
 
+  testWidgets('one click only half-opens even when it delivers two taps', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: CardsStage(
+            onAdd: _noop,
+            onScan: _noop,
+            onDesign: _noop,
+            passes: [
+              WalletPass(label: 'Ada', detail: 'Studio'),
+              WalletPass(label: 'Grace', detail: 'Design'),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open wallet'));
+    await tester.pumpAndSettle();
+
+    final adaCard = find.byKey(const ValueKey('wallet-pass-0'));
+    final before = tester.getRect(adaCard);
+    final graceBefore = tester.getTopLeft(find.text('Grace')).dy;
+    await tester.tap(find.text('Ada'));
+    await tester.tap(find.text('Ada'));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('open-card')), findsNothing);
+    await tester.pump(const Duration(milliseconds: 40));
+    expect(find.byKey(const ValueKey('open-card')), findsNothing);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('open-card')), findsNothing);
+
+    final half = tester.getRect(adaCard);
+    expect((half.top - before.top).abs(), lessThan(12));
+    expect(half.height, closeTo(before.height * 1.5, before.height * 0.12));
+    expect(tester.getTopLeft(find.text('Ada')).dy, lessThan(half.top + 56));
+    expect(
+      tester.getTopLeft(find.text('Studio')).dy,
+      greaterThan(tester.getTopLeft(find.text('Ada')).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text('Grace')).dy,
+      greaterThan(graceBefore + 12),
+    );
+    _expectCategoryClearOfNextCard(tester, 'Studio', 0);
+
+    await tester.tapAt(Offset(half.center.dx, half.top + 28));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('open-card')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('open-card')),
+        matching: find.text('Ada'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('open-card')),
+        matching: find.text('Studio'),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('an open sample card shows values and icons without titles', (
     tester,
   ) async {

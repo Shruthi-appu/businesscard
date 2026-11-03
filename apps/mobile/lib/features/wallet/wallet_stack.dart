@@ -84,8 +84,9 @@ class WalletPass {
 /// Cards wait in the wallet. Open wallet deals them over 2300ms into the
 /// vertical fan. Close wallet runs that deal backwards. Once the fan is open,
 /// a vertical scroll eases the stack up or down. The card under the cursor,
-/// or a card that is pressed, opens halfway in its own slot. A second press
-/// on that card opens it fully.
+/// or the first press on a card, opens that card halfway in its own slot.
+/// That press does not open the detail. A later press, once the half-open
+/// has settled, opens the full detail in place.
 class CardsStage extends StatefulWidget {
   const CardsStage({
     super.key,
@@ -128,10 +129,20 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   late final AnimationController _deal;
   late final AnimationController _half;
   late final AnimationController _scrollAnim;
+
+  /// Starts when a press pins a card. The detail stays closed until this
+  /// finishes, so a second tap from the same click cannot open it.
+  late final AnimationController _arm;
   int? _hover;
   int? _pinned;
   int? _halfIndex;
   int? _opened;
+
+  /// True only after the pinned half-open has settled. Captured on pointer
+  /// down so the release of that gesture is what may open the detail.
+  var _secondPressArmed = false;
+  var _releaseOpens = false;
+  int? _releaseOpenIndex;
 
   /// Movement past this counts as a drag, so the fan scrolls and the card
   /// does not half-open or open. Kept inside the tap slop (18px).
@@ -183,7 +194,18 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
             _scroll = _scrollFrom + (_scrollTarget - _scrollFrom) * t;
           });
         });
+    _arm = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    )..addStatusListener(_onArmStatus);
     _bindMenu();
+  }
+
+  void _onArmStatus(AnimationStatus status) {
+    if (!mounted || status != AnimationStatus.completed) return;
+    final armed = _pinned != null && _opened == null;
+    if (_secondPressArmed == armed) return;
+    setState(() => _secondPressArmed = armed);
   }
 
   @override
@@ -219,6 +241,7 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     _unbindMenu(widget.menuHandle);
     _deal.dispose();
     _half.dispose();
+    _arm.dispose();
     _scrollAnim.dispose();
     super.dispose();
   }
@@ -238,6 +261,10 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     _scrollAnim.stop();
     _pinned = null;
     _hover = null;
+    _secondPressArmed = false;
+    _releaseOpens = false;
+    _releaseOpenIndex = null;
+    _arm.stop();
     _collapseLift();
     _deal.reverse();
   }
@@ -266,6 +293,8 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   }
 
   void _onFanPointerDown(PointerDownEvent event) {
+    _releaseOpens = _secondPressArmed && _pinned != null;
+    _releaseOpenIndex = _pinned;
     _pressTravel = 0;
     _pressDy = 0;
     _pressDrag = false;
@@ -284,19 +313,36 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     if (dy != 0) _nudgeScroll(dy);
   }
 
-  /// A press that is not a drag half-opens [index]. A second press on the
-  /// card that is already half-open from a press opens the full detail.
+  /// A press that is not a drag half-opens [index]. The detail stays closed
+  /// on that press. A later press, begun after the half-open has settled,
+  /// opens the full detail in place.
   void _pressCard(int index) {
     if (_pressDrag || _intro < 1 || _opened != null || _menuOpen) return;
-    if (_pinned == index) {
+    if (_releaseOpens && _releaseOpenIndex == index && _pinned == index) {
+      _secondPressArmed = false;
+      _releaseOpens = false;
+      _releaseOpenIndex = null;
+      _arm.stop();
       setState(() => _opened = index);
       _pinned = null;
       _hover = null;
       _collapseLift();
       return;
     }
+    if (_pinned == index) {
+      _aimLift(index);
+      return;
+    }
+    _beginHalfOpen(index);
+  }
+
+  void _beginHalfOpen(int index) {
     _pinned = index;
+    _secondPressArmed = false;
+    _releaseOpens = false;
+    _releaseOpenIndex = null;
     _aimLift(index);
+    _arm.forward(from: 0);
   }
 
   void _setHover(int? index) {
