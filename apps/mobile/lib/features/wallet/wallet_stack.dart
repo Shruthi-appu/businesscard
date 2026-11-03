@@ -880,7 +880,7 @@ class _FanCard extends StatelessWidget {
                   if (pass.label.isNotEmpty)
                     Text(
                       pass.label,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: showBack ? palette.light : palette.ink,
@@ -893,7 +893,7 @@ class _FanCard extends StatelessWidget {
                   if (pass.detail != null && pass.detail!.isNotEmpty)
                     Text(
                       pass.detail!,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: showBack ? palette.light : palette.ink,

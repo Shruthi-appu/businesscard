@@ -249,9 +249,6 @@ void main() {
       tester.getTopLeft(find.text('Studio lead')).dy,
       greaterThan(tester.getTopLeft(find.text('Meera Iyer')).dy),
     );
-    final fanStep = _paintedCard(tester, 1).top - _paintedCard(tester, 0).top;
-    // ignore: avoid_print
-    print('PHONE_FAN_STEP $fanStep');
     for (var i = 0; i < testCards.length - 1; i++) {
       _expectCategoryClearOfNextCard(tester, testCards[i].category, i);
     }
