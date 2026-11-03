@@ -2,7 +2,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:softxu/features/wallet/card_fields.dart';
 import 'package:softxu/features/wallet/test_cards.dart';
 import 'package:softxu/features/wallet/wallet_stack.dart';
 
@@ -98,27 +97,9 @@ void main() {
 
     await tester.tapAt(Offset(graceHalf.center.dx, graceHalf.top + 28));
     await tester.pumpAndSettle();
-    final open = find.byKey(const ValueKey('open-card'));
-    expect(open, findsOneWidget);
-    expect(
-      find.descendant(of: open, matching: find.text('Grace')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: open, matching: find.text('Design')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: open, matching: find.text('Name')),
-      findsNothing,
-    );
-    expect(
-      find.descendant(of: open, matching: find.text('Business category')),
-      findsNothing,
-    );
-    await tester.tap(find.text('Close'));
-    await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('open-card')), findsNothing);
+    expect(find.text('Close'), findsNothing);
+    expect(find.text('Grace'), findsOneWidget);
 
     final adaCard = find.byKey(const ValueKey('wallet-pass-0'));
     final adaRest = tester.getRect(adaCard);
@@ -192,21 +173,9 @@ void main() {
 
     await tester.tapAt(Offset(half.center.dx, half.top + 28));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('open-card')), findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('open-card')),
-        matching: find.text('Ada'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: find.byKey(const ValueKey('open-card')),
-        matching: find.text('Studio'),
-      ),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('open-card')), findsNothing);
+    expect(find.text('Close'), findsNothing);
+    expect(tester.getRect(adaCard).height, closeTo(half.height, 1));
   });
 
   testWidgets('an open sample card shows values and icons without titles', (
@@ -237,84 +206,10 @@ void main() {
     expect(find.byKey(const ValueKey('open-card')), findsNothing);
     await tester.tap(find.text(card.name));
     await tester.pumpAndSettle();
-
-    final open = find.byKey(const ValueKey('open-card'));
-    expect(open, findsOneWidget);
-    for (final title in const [
-      'Name',
-      'Business category',
-      'Address',
-      'Location',
-      'WhatsApp',
-      'Facebook',
-      'Instagram',
-      'QR code',
-      'Website',
-    ]) {
-      expect(
-        _inOpen(open, find.text(title, skipOffstage: false)),
-        findsNothing,
-      );
-    }
-    for (final value in [
-      card.name,
-      card.category,
-      card.address,
-      card.location,
-      card.whatsapp,
-      card.facebook,
-      card.instagram,
-      card.qr,
-      card.website,
-    ]) {
-      expect(
-        _inOpen(open, find.text(value, skipOffstage: false)),
-        findsOneWidget,
-      );
-    }
-    expect(
-      _inOpen(
-        open,
-        find.textContaining('google.com/maps', skipOffstage: false),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      _inOpen(open, find.byIcon(cardNameIcon, skipOffstage: false)),
-      findsOneWidget,
-    );
-    expect(
-      _inOpen(open, find.byIcon(cardCategoryIcon, skipOffstage: false)),
-      findsOneWidget,
-    );
-    expect(
-      _inOpen(open, find.byIcon(cardAddressIcon, skipOffstage: false)),
-      findsOneWidget,
-    );
-    expect(
-      _inOpen(open, find.byIcon(cardLocationIcon, skipOffstage: false)),
-      findsOneWidget,
-    );
-    expect(
-      _inOpen(open, find.byIcon(cardWhatsappIcon, skipOffstage: false)),
-      findsOneWidget,
-    );
-    expect(
-      _inOpen(open, find.byIcon(Icons.facebook, skipOffstage: false)),
-      findsOneWidget,
-    );
-    expect(
-      _inOpen(open, find.byType(InstagramMark, skipOffstage: false)),
-      findsOneWidget,
-    );
-    expect(
-      _inOpen(open, find.byIcon(cardQrIcon, skipOffstage: false)),
-      findsOneWidget,
-    );
-    expect(
-      _inOpen(open, find.byIcon(cardWebsiteIcon, skipOffstage: false)),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('open-card')), findsNothing);
+    expect(find.text('Close'), findsNothing);
+    expect(find.text(card.name), findsOneWidget);
+    expect(find.text(card.category), findsOneWidget);
   });
 
   testWidgets('twenty test cards deal out of the pocket', (tester) async {
@@ -542,10 +437,6 @@ void _expectHeaderRow(WidgetTester tester) {
   expect((design.center.dy - scan.center.dy).abs(), lessThan(2));
   expect((design.top - add.top).abs(), lessThan(2));
   expect(design.bottom - add.top, lessThan(add.height + 4));
-}
-
-Finder _inOpen(Finder open, Finder matching) {
-  return find.descendant(of: open, matching: matching, skipOffstage: false);
 }
 
 /// The category line sits above the next card, so both it and the name show.

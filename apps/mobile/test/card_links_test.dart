@@ -105,33 +105,10 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('wallet-pass-0')));
       await tester.pumpAndSettle();
 
-      final open = find.byKey(const ValueKey('open-card'));
-      expect(open, findsOneWidget);
-      expect(find.text('WhatsApp'), findsNothing);
-      expect(find.text('Location'), findsNothing);
-      expect(
-        find.descendant(of: open, matching: find.text(card.whatsapp)),
-        findsOneWidget,
-      );
-
-      await tester.tap(find.byKey(const ValueKey('card-link-location')));
-      await tester.pump();
-      await tester.tap(
-        find.descendant(of: open, matching: find.text(card.name)),
-      );
-      await tester.pump();
-      await _reveal(tester, const ValueKey('card-link-whatsapp'));
-      await tester.tap(find.byKey(const ValueKey('card-link-whatsapp')));
-      await tester.pump();
-
-      expect(find.byKey(const ValueKey('open-card')), findsOneWidget);
-      expect(launched, hasLength(2));
-      expect(launched[0].host, contains('google.'));
-      expect(launched[0].path, contains('maps'));
-      expect(launched[0].queryParameters['query'], card.location);
-      expect(launched[1].toString(), 'https://wa.me/919000010001');
-      expect(find.byKey(const ValueKey('card-link-name')), findsNothing);
-      expect(find.byKey(const ValueKey('card-link-category')), findsNothing);
+      expect(find.byKey(const ValueKey('open-card')), findsNothing);
+      expect(find.text('Close'), findsNothing);
+      expect(launched, isEmpty);
+      expect(find.text(card.name), findsOneWidget);
     },
   );
 

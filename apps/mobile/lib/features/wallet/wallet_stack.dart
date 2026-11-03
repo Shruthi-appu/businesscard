@@ -115,6 +115,8 @@ class CardsStage extends StatefulWidget {
   final WalletMenuHandle? menuHandle;
 
   /// Opens a fact's map, chat, or profile link. Defaults to [launchCardLink].
+  /// Callers may still pass a launcher. A fan press does not open a full-screen card.
+  // ignore: unused_field
   final CardLinkLauncher? openLink;
 
   @override
@@ -130,19 +132,9 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   late final AnimationController _half;
   late final AnimationController _scrollAnim;
 
-  /// Starts when a press pins a card. The detail stays closed until this
-  /// finishes, so a second tap from the same click cannot open it.
-  late final AnimationController _arm;
   int? _hover;
   int? _pinned;
   int? _halfIndex;
-  int? _opened;
-
-  /// True only after the pinned half-open has settled. Captured on pointer
-  /// down so the release of that gesture is what may open the detail.
-  var _secondPressArmed = false;
-  var _releaseOpens = false;
-  int? _releaseOpenIndex;
 
   /// Movement past this counts as a drag, so the fan scrolls and the card
   /// does not half-open or open. Kept inside the tap slop (18px).
@@ -194,18 +186,7 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
             _scroll = _scrollFrom + (_scrollTarget - _scrollFrom) * t;
           });
         });
-    _arm = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 220),
-    )..addStatusListener(_onArmStatus);
     _bindMenu();
-  }
-
-  void _onArmStatus(AnimationStatus status) {
-    if (!mounted || status != AnimationStatus.completed) return;
-    final armed = _pinned != null && _opened == null;
-    if (_secondPressArmed == armed) return;
-    setState(() => _secondPressArmed = armed);
   }
 
   @override
@@ -241,7 +222,6 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     _unbindMenu(widget.menuHandle);
     _deal.dispose();
     _half.dispose();
-    _arm.dispose();
     _scrollAnim.dispose();
     super.dispose();
   }
@@ -261,10 +241,6 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     _scrollAnim.stop();
     _pinned = null;
     _hover = null;
-    _secondPressArmed = false;
-    _releaseOpens = false;
-    _releaseOpenIndex = null;
-    _arm.stop();
     _collapseLift();
     _deal.reverse();
   }
@@ -275,7 +251,7 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   }
 
   void _nudgeScroll(double dy) {
-    if (_intro < 1 || _opened != null || _menuOpen || dy == 0) return;
+    if (_intro < 1 || _menuOpen || dy == 0) return;
     _scrollFrom = _scroll;
     final limit = _scrollLimit;
     _scrollTarget = (_scrollTarget + dy).clamp(-limit, limit).toDouble();
@@ -293,8 +269,6 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   }
 
   void _onFanPointerDown(PointerDownEvent event) {
-    _releaseOpens = _secondPressArmed && _pinned != null;
-    _releaseOpenIndex = _pinned;
     _pressTravel = 0;
     _pressDy = 0;
     _pressDrag = false;
@@ -313,22 +287,10 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     if (dy != 0) _nudgeScroll(dy);
   }
 
-  /// A press that is not a drag half-opens [index]. The detail stays closed
-  /// on that press. A later press, begun after the half-open has settled,
-  /// opens the full detail in place.
+  /// A press that is not a drag half-opens [index] in the fan.
+  /// It never covers the screen with a full card.
   void _pressCard(int index) {
-    if (_pressDrag || _intro < 1 || _opened != null || _menuOpen) return;
-    if (_releaseOpens && _releaseOpenIndex == index && _pinned == index) {
-      _secondPressArmed = false;
-      _releaseOpens = false;
-      _releaseOpenIndex = null;
-      _arm.stop();
-      setState(() => _opened = index);
-      _pinned = null;
-      _hover = null;
-      _collapseLift();
-      return;
-    }
+    if (_pressDrag || _intro < 1 || _menuOpen) return;
     if (_pinned == index) {
       _aimLift(index);
       return;
@@ -338,11 +300,7 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
 
   void _beginHalfOpen(int index) {
     _pinned = index;
-    _secondPressArmed = false;
-    _releaseOpens = false;
-    _releaseOpenIndex = null;
     _aimLift(index);
-    _arm.forward(from: 0);
   }
 
   void _setHover(int? index) {
@@ -573,16 +531,6 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
                           textAlign: TextAlign.center,
                         ),
                       ),
-                    if (_opened != null && _opened! < widget.passes.length)
-                      Positioned.fill(
-                        child: _OpenCard(
-                          pass: widget.passes[_opened!],
-                          palette: _palettes[_opened! % _palettes.length],
-                          showBack: _opened!.isOdd,
-                          openLink: widget.openLink,
-                          onClose: () => setState(() => _opened = null),
-                        ),
-                      ),
                     Positioned(
                       right: phone ? 12 : 18,
                       top: deck.floor + 8,
@@ -642,14 +590,14 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
         stripLeft: strip.left - boxLeft,
         stripWidth: strip.width,
         stripHeight: strip.height,
-        interactive: _intro >= 1 && _opened == null,
+        interactive: _intro >= 1,
         onTap: () => _pressCard(placed.index),
       ),
     );
   }
 
   void _trackHover(Offset local, _Deck deck) {
-    if (_intro < 1 || _opened != null || _menuOpen) {
+    if (_intro < 1 || _menuOpen) {
       _setHover(null);
       return;
     }
@@ -1101,132 +1049,6 @@ class _FanCard extends StatelessWidget {
         ],
       ),
       child: face,
-    );
-  }
-}
-
-class _OpenCard extends StatelessWidget {
-  const _OpenCard({
-    required this.pass,
-    required this.palette,
-    required this.showBack,
-    required this.onClose,
-    this.openLink,
-  });
-
-  final WalletPass pass;
-  final _Palette palette;
-  final bool showBack;
-  final VoidCallback onClose;
-  final CardLinkLauncher? openLink;
-
-  @override
-  Widget build(BuildContext context) {
-    final ink = showBack ? palette.light : palette.ink;
-    final facts = pass.facts.isNotEmpty
-        ? pass.facts
-        : [
-            WalletFact(field: 'name', label: 'Name', value: pass.label),
-            if (pass.detail != null && pass.detail!.isNotEmpty)
-              WalletFact(
-                field: 'category',
-                label: 'Business category',
-                value: pass.detail!,
-              ),
-          ];
-    return ColoredBox(
-      color: const Color(0xB3000000),
-      child: GestureDetector(
-        onTap: onClose,
-        child: Center(
-          child: GestureDetector(
-            onTap: () {},
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final width = math.min(340.0, constraints.maxWidth - 32);
-                final height = math.min(
-                  width * 1.7,
-                  constraints.maxHeight - 48,
-                );
-                return SizedBox(
-                  key: const ValueKey('open-card'),
-                  width: width,
-                  height: height,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: showBack ? palette.field : palette.paper,
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x66000000),
-                          blurRadius: 28,
-                          offset: Offset(0, 16),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CustomPaint(painter: _FacePainter(palette, showBack)),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: onClose,
-                                    child: Text(
-                                      'Close',
-                                      style: TextStyle(color: ink),
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  child: ListView(
-                                    children: [
-                                      for (final fact in facts)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                            bottom: 10,
-                                          ),
-                                          child: CardFactRow(
-                                            field: fact.field,
-                                            value: fact.value,
-                                            extra: fact.extra,
-                                            iconSize: 18,
-                                            gap: 8,
-                                            launcher: openLink,
-                                            valueStyle: TextStyle(
-                                              color: ink,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                            extraStyle: TextStyle(
-                                              color: ink,
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

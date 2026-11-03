@@ -100,28 +100,10 @@ void main() {
     expect(find.byKey(const ValueKey('open-card')), findsNothing);
     await tester.tap(find.text('Ada Lovelace'));
     await tester.pumpAndSettle();
-    final open = find.byKey(const ValueKey('open-card'));
-    expect(open, findsOneWidget);
-    expect(find.text('Analytical Engines'), findsWidgets);
-    expect(
-      find.descendant(of: open, matching: find.text('Ada Lovelace')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: open, matching: find.text('Analytical Engines')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: open, matching: find.text('Name')),
-      findsNothing,
-    );
-    expect(
-      find.descendant(of: open, matching: find.text('Business category')),
-      findsNothing,
-    );
-    await tester.tap(find.text('Close'));
-    await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('open-card')), findsNothing);
+    expect(find.text('Close'), findsNothing);
+    expect(find.text('Ada Lovelace'), findsWidgets);
+    expect(find.text('Analytical Engines'), findsWidgets);
 
     await tester.ensureVisible(find.text('Scan'));
     await tester.tap(find.text('Scan'));
