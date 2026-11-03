@@ -210,44 +210,65 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet>
   double _tapTravel = 0;
   var _mutePop = false;
   var _muteShift = false;
-  late final AnimationController _pop;
-  late final AnimationController _shift;
+  AnimationController? _popController;
+  AnimationController? _shiftController;
+
+  AnimationController get _pop => _popController ??= _createPop();
+
+  AnimationController get _shift => _shiftController ??= _createShift();
+
+  AnimationController _createPop() {
+    final controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
+    _popController = controller;
+    controller
+      ..addListener(() {
+        if (mounted && !_mutePop) setState(() {});
+      })
+      ..addStatusListener((status) {
+        if (_mutePop || status != AnimationStatus.dismissed || _popId == null) {
+          return;
+        }
+        setState(() => _popId = null);
+      });
+    return controller;
+  }
+
+  AnimationController _createShift() {
+    final controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 480),
+    );
+    _shiftController = controller;
+    controller
+      ..addListener(() {
+        if (mounted && !_muteShift && _advanceFrom != null) setState(() {});
+      })
+      ..addStatusListener((status) {
+        if (_muteShift ||
+            status != AnimationStatus.completed ||
+            _advanceFrom == null) {
+          return;
+        }
+        setState(() => _advanceFrom = null);
+      });
+    return controller;
+  }
 
   @override
   void initState() {
     super.initState();
-    _pop =
-        AnimationController(
-            vsync: this,
-            duration: const Duration(milliseconds: 520),
-          )
-          ..addListener(() {
-            if (mounted && !_mutePop) setState(() {});
-          })
-          ..addStatusListener((status) {
-            if (_mutePop ||
-                status != AnimationStatus.dismissed ||
-                _popId == null) {
-              return;
-            }
-            setState(() => _popId = null);
-          });
-    _shift =
-        AnimationController(
-            vsync: this,
-            duration: const Duration(milliseconds: 480),
-          )
-          ..addListener(() {
-            if (mounted && !_muteShift && _advanceFrom != null) setState(() {});
-          })
-          ..addStatusListener((status) {
-            if (_muteShift ||
-                status != AnimationStatus.completed ||
-                _advanceFrom == null) {
-              return;
-            }
-            setState(() => _advanceFrom = null);
-          });
+    _pop;
+    _shift;
+  }
+
+  @override
+  void reassemble() {
+    super.reassemble();
+    _pop;
+    _shift;
   }
 
   @override
@@ -269,8 +290,10 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet>
 
   @override
   void dispose() {
-    _pop.dispose();
-    _shift.dispose();
+    _popController?.dispose();
+    _shiftController?.dispose();
+    _popController = null;
+    _shiftController = null;
     super.dispose();
   }
 
@@ -299,10 +322,11 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet>
   }
 
   void _stopShift() {
-    if (_advanceFrom == null && !_shift.isAnimating) return;
+    final shift = _shiftController;
+    if (_advanceFrom == null && (shift == null || !shift.isAnimating)) return;
     _muteShift = true;
-    _shift.stop();
-    _shift.value = 1;
+    shift?.stop();
+    if (shift != null) shift.value = 1;
     _advanceFrom = null;
     _muteShift = false;
   }

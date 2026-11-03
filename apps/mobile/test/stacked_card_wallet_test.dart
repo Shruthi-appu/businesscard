@@ -251,6 +251,26 @@ void main() {
     expect(find.byKey(const ValueKey('card-pop-close')), findsNothing);
   });
 
+  testWidgets('removing the wallet does not throw', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(_host(_sample(), onOpen: (_) {}));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(_host(_sample(), onOpen: (_) {}));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Arjun Menon'));
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('the pile fits a narrow phone and a wide phone', (tester) async {
     for (final size in const [Size(320, 700), Size(430, 932)]) {
       tester.view.devicePixelRatio = 1;
