@@ -33,10 +33,56 @@ void main() {
       await tester.tap(find.widgetWithText(CupertinoButton, 'Create account'));
       await tester.pumpAndSettle();
       expect(find.text('Signed in as Ada Lovelace'), findsOneWidget);
-      expect(find.text('No cards yet'), findsOneWidget);
+      expect(find.text('IncardIt'), findsOneWidget);
+      expect(find.text('Open wallet'), findsOneWidget);
       expect(find.byType(CupertinoNavigationBar), findsOneWidget);
       expect(find.text('Sign out'), findsOneWidget);
+      final menu = tester.getRect(find.byKey(const ValueKey('wallet-menu')));
+      final signOut = tester.getRect(find.text('Sign out'));
+      final bar = tester.getRect(find.byType(CupertinoNavigationBar));
+      expect(bar.contains(menu.center), isTrue);
+      expect(menu.center.dx, lessThan(bar.center.dx));
+      expect(menu.right, lessThan(signOut.left));
+      expect(menu.shortestSide, greaterThanOrEqualTo(44));
     } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('iPhone wallet opens at phone size', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(402, 874);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final errors = <Object>[];
+    final previous = FlutterError.onError;
+    FlutterError.onError = (details) {
+      errors.add(details.exception);
+      previous?.call(details);
+    };
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [httpClientProvider.overrideWithValue(_scriptedSuccess())],
+          child: const SoftxuApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Create an account'));
+      await tester.pumpAndSettle();
+      await tester.enterText(_field('Display name'), 'Ada Lovelace');
+      await tester.enterText(_field('Email'), 'ada@example.com');
+      await tester.enterText(_field('Password'), 'correct-horse');
+      await tester.tap(find.widgetWithText(CupertinoButton, 'Create account'));
+      await tester.pumpAndSettle();
+      expect(find.text('Open wallet'), findsOneWidget);
+      await tester.tap(find.text('Open wallet'));
+      await tester.pumpAndSettle();
+      expect(find.text('Close wallet'), findsOneWidget);
+      expect(errors, isEmpty);
+    } finally {
+      FlutterError.onError = previous;
       debugDefaultTargetPlatformOverride = null;
     }
   });

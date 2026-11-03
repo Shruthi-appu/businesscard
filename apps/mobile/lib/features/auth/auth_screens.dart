@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -32,15 +31,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final session = ref.watch(sessionProvider);
     if (session.isLoading) {
       return const _StatusScaffold(message: 'Checking your session…');
-    }
-    if (session.hasError) {
-      return _StatusScaffold(
-        message:
-            "We couldn't reach Softxu. Check your connection and try again.",
-        alert: true,
-        action: 'Retry',
-        onAction: () => ref.invalidate(sessionProvider),
-      );
     }
     return _AuthScaffold(
       title: 'Sign in',
@@ -238,43 +228,17 @@ class _AuthScaffold extends StatelessWidget {
 }
 
 class _StatusScaffold extends StatelessWidget {
-  const _StatusScaffold({
-    required this.message,
-    this.alert = false,
-    this.action,
-    this.onAction,
-  });
+  const _StatusScaffold({required this.message});
 
   final String message;
-  final bool alert;
-  final String? action;
-  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
-    final color = alert
-        ? (iphoneApp
-              ? CupertinoColors.destructiveRed
-              : Theme.of(context).colorScheme.error)
-        : null;
     return SoftxuPage(
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: color),
-              ),
-              if (action != null) ...[
-                const SizedBox(height: 12),
-                SoftxuPrimaryButton(onPressed: onAction, label: action!),
-              ],
-            ],
-          ),
+          child: Text(message, textAlign: TextAlign.center),
         ),
       ),
     );
