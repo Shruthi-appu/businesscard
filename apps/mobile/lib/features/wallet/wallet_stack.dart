@@ -2,17 +2,35 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'card_fields.dart';
+
+class WalletFact {
+  const WalletFact({
+    required this.field,
+    required this.label,
+    required this.value,
+    this.extra,
+  });
+
+  final String field;
+  final String label;
+  final String value;
+  final String? extra;
+}
+
 class WalletPass {
   const WalletPass({
     required this.label,
     this.detail,
     this.favourite = false,
+    this.facts = const [],
     this.onOpen,
   });
 
   final String label;
   final String? detail;
   final bool favourite;
+  final List<WalletFact> facts;
   final VoidCallback? onOpen;
 }
 
@@ -53,6 +71,8 @@ class _CardsStageState extends State<CardsStage>
   static const _ink = Color(0xFFF4F1EA);
 
   late final AnimationController _deal;
+  int? _hover;
+  int? _opened;
 
   @override
   void initState() {
@@ -79,6 +99,18 @@ class _CardsStageState extends State<CardsStage>
   void _close() {
     if (_deal.isAnimating || _deal.value <= 0) return;
     _deal.reverse();
+  }
+
+  List<_Placed> _paintOrder(List<_Placed> cards) {
+    final hover = _hover;
+    if (hover == null) return cards;
+    final ordered = [...cards];
+    ordered.sort((a, b) {
+      if (a.index == hover) return 1;
+      if (b.index == hover) return -1;
+      return a.index.compareTo(b.index);
+    });
+    return ordered;
   }
 
   @override
@@ -117,21 +149,33 @@ class _CardsStageState extends State<CardsStage>
             child: Stack(
               children: [
                 if (showWallet) _walletBack(deck, stageW, stageH),
-                for (final placed in deck.cards)
+                for (final placed in _paintOrder(deck.cards))
                   Positioned(
                     left: placed.cx - placed.width / 2,
                     top: placed.cy - placed.height / 2,
                     width: placed.width,
                     height: placed.height,
                     child: IgnorePointer(
-                      ignoring: _intro < 1,
-                      child: Transform.scale(
-                        scale: placed.scale,
-                        child: _FanCard(
-                          key: ValueKey('wallet-pass-${placed.index}'),
-                          pass: widget.passes[placed.index],
-                          palette: _palettes[placed.index % _palettes.length],
-                          showBack: placed.index.isOdd,
+                      ignoring: _intro < 1 || _opened != null,
+                      child: MouseRegion(
+                        onEnter: (_) => setState(() => _hover = placed.index),
+                        onExit: (_) => setState(() {
+                          if (_hover == placed.index) _hover = null;
+                        }),
+                        child: Transform.scale(
+                          scale: placed.scale,
+                          child: _Lift(
+                            lifted: _hover == placed.index,
+                            child: _FanCard(
+                              key: ValueKey('wallet-pass-${placed.index}'),
+                              pass: widget.passes[placed.index],
+                              palette:
+                                  _palettes[placed.index % _palettes.length],
+                              showBack: placed.index.isOdd,
+                              onTap: () =>
+                                  setState(() => _opened = placed.index),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -207,6 +251,15 @@ class _CardsStageState extends State<CardsStage>
                     right: 16,
                     bottom: 8,
                     child: widget.footer!,
+                  ),
+                if (_opened != null && _opened! < widget.passes.length)
+                  Positioned.fill(
+                    child: _OpenCard(
+                      pass: widget.passes[_opened!],
+                      palette: _palettes[_opened! % _palettes.length],
+                      showBack: _opened!.isOdd,
+                      onClose: () => setState(() => _opened = null),
+                    ),
                   ),
                 Positioned(
                   right: phone ? 12 : 18,
@@ -402,17 +455,43 @@ class _Pill extends StatelessWidget {
   }
 }
 
+class _Lift extends StatelessWidget {
+  const _Lift({required this.lifted, required this.child});
+
+  final bool lifted;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: lifted ? -0.5 : 0),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      builder: (context, dy, child) {
+        return FractionalTranslation(
+          translation: Offset(0, dy),
+          transformHitTests: false,
+          child: child,
+        );
+      },
+      child: child,
+    );
+  }
+}
+
 class _FanCard extends StatelessWidget {
   const _FanCard({
     super.key,
     required this.pass,
     required this.palette,
     required this.showBack,
+    required this.onTap,
   });
 
   final WalletPass pass;
   final _Palette palette;
   final bool showBack;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -481,9 +560,159 @@ class _FanCard extends StatelessWidget {
           ),
         ],
       ),
-      child: pass.onOpen == null
-          ? face
-          : GestureDetector(onTap: pass.onOpen, child: face),
+      child: GestureDetector(onTap: onTap, child: face),
+    );
+  }
+}
+
+class _OpenCard extends StatelessWidget {
+  const _OpenCard({
+    required this.pass,
+    required this.palette,
+    required this.showBack,
+    required this.onClose,
+  });
+
+  final WalletPass pass;
+  final _Palette palette;
+  final bool showBack;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = showBack ? palette.light : palette.ink;
+    final facts = pass.facts.isNotEmpty
+        ? pass.facts
+        : [
+            WalletFact(field: 'name', label: 'Name', value: pass.label),
+            if (pass.detail != null && pass.detail!.isNotEmpty)
+              WalletFact(
+                field: 'category',
+                label: 'Business category',
+                value: pass.detail!,
+              ),
+          ];
+    return ColoredBox(
+      color: const Color(0xB3000000),
+      child: GestureDetector(
+        onTap: onClose,
+        child: Center(
+          child: GestureDetector(
+            onTap: () {},
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final width = math.min(340.0, constraints.maxWidth - 32);
+                final height = math.min(
+                  width * 1.7,
+                  constraints.maxHeight - 48,
+                );
+                return SizedBox(
+                  key: const ValueKey('open-card'),
+                  width: width,
+                  height: height,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x66000000),
+                          blurRadius: 28,
+                          offset: Offset(0, 16),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CustomPaint(painter: _FacePainter(palette, showBack)),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: onClose,
+                                    child: Text(
+                                      'Close',
+                                      style: TextStyle(color: ink),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: ListView(
+                                    children: [
+                                      for (final fact in facts)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            bottom: 10,
+                                          ),
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              CardFieldIcon(
+                                                fact.field,
+                                                size: 18,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      fact.label,
+                                                      style: TextStyle(
+                                                        color: ink.withValues(
+                                                          alpha: 0.75,
+                                                        ),
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      fact.value,
+                                                      style: TextStyle(
+                                                        color: ink,
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                    if (fact.extra != null &&
+                                                        fact.extra!.isNotEmpty)
+                                                      Text(
+                                                        fact.extra!,
+                                                        style: TextStyle(
+                                                          color: ink,
+                                                          fontSize: 11,
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

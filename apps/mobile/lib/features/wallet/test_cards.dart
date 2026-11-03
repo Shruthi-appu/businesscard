@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import 'card_fields.dart';
 import 'wallet_stack.dart';
 
 /// One sample card, with every detail the add-card form can save.
@@ -29,7 +30,31 @@ class TestCard {
   final String website;
 
   WalletPass toPass({VoidCallback? onOpen}) {
-    return WalletPass(label: name, detail: category, onOpen: onOpen);
+    return WalletPass(
+      label: name,
+      detail: category,
+      onOpen: onOpen,
+      facts: [
+        WalletFact(field: 'name', label: 'Name', value: name),
+        WalletFact(
+          field: 'category',
+          label: 'Business category',
+          value: category,
+        ),
+        WalletFact(field: 'address', label: 'Address', value: address),
+        WalletFact(
+          field: 'location',
+          label: 'Location',
+          value: location,
+          extra: locationUrl(location),
+        ),
+        WalletFact(field: 'whatsapp', label: 'WhatsApp', value: whatsapp),
+        WalletFact(field: 'facebook', label: 'Facebook', value: facebook),
+        WalletFact(field: 'instagram', label: 'Instagram', value: instagram),
+        WalletFact(field: 'qr', label: 'QR code', value: qr),
+        WalletFact(field: 'website', label: 'Website', value: website),
+      ],
+    );
   }
 }
 
@@ -261,9 +286,6 @@ final testWalletPasses = <WalletPass>[
   for (final card in testCards) card.toPass(),
 ];
 
-List<WalletPass> samplePasses(void Function(int index) onOpen) {
-  return [
-    for (var index = 0; index < testCards.length; index++)
-      testCards[index].toPass(onOpen: () => onOpen(index)),
-  ];
+List<WalletPass> samplePasses() {
+  return [for (final card in testCards) card.toPass()];
 }

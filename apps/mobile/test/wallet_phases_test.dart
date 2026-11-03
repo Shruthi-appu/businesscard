@@ -54,18 +54,12 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ada Lovelace'));
     await tester.pumpAndSettle();
-    expect(find.text('Share a link'), findsOneWidget);
-    expect(find.text('Exchange in person'), findsOneWidget);
-    expect(find.text('Edit card'), findsOneWidget);
+    expect(find.byKey(const ValueKey('open-card')), findsOneWidget);
+    expect(find.text('Analytical Engines'), findsWidgets);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('open-card')), findsNothing);
 
-    await tester.tap(find.text('Show QR'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
-    expect(find.text('https://softxu.test/exchange/session'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Back'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
     await tester.ensureVisible(find.text('Scan'));
     await tester.tap(find.text('Scan'));
     await tester.pumpAndSettle();

@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:softxu/features/wallet/test_cards.dart';
@@ -47,6 +48,26 @@ void main() {
     expect(card.width, closeTo(200, 1));
     expect(card.height / card.width, closeTo(1.7, 0.02));
     expect(find.text('Close wallet'), findsOneWidget);
+
+    final resting = tester.getCenter(find.text('Grace'));
+    final pointer = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await pointer.addPointer(location: resting);
+    await pointer.moveTo(resting);
+    await tester.pumpAndSettle();
+    expect(
+      resting.dy - tester.getCenter(find.text('Grace')).dy,
+      greaterThan(80),
+    );
+    await pointer.removePointer();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Grace'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('open-card')), findsOneWidget);
+    expect(find.text('Name'), findsOneWidget);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('open-card')), findsNothing);
   });
 
   testWidgets('twenty test cards deal out of the pocket', (tester) async {

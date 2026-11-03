@@ -77,7 +77,7 @@ class WalletScreen extends ConsumerWidget {
             onScan: () => context.push('/wallet/scan'),
             onDesign: () => context.push('/wallet/create'),
             passes: [
-              ...samplePasses((index) => context.push('/wallet/sample/$index')),
+              ...samplePasses(),
               for (var index = 0; index < lines.length; index++)
                 WalletPass(
                   label: lines[index],
@@ -87,12 +87,6 @@ class WalletScreen extends ConsumerWidget {
                   favourite:
                       index < snapshot.cards.length &&
                       snapshot.cards[index].isFavourite,
-                  onOpen:
-                      index < snapshot.cards.length &&
-                          snapshot.cards[index].id.isNotEmpty
-                      ? () =>
-                            context.push('/wallet/${snapshot.cards[index].id}')
-                      : null,
                 ),
             ],
           );
@@ -165,7 +159,7 @@ class _SampleWallet extends ConsumerWidget {
         onAdd: () => context.push('/wallet/new'),
         onScan: () => context.push('/wallet/scan'),
         onDesign: () => context.push('/wallet/create'),
-        passes: samplePasses((index) => context.push('/wallet/sample/$index')),
+        passes: samplePasses(),
       ),
     );
   }
