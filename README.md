@@ -47,14 +47,14 @@ cd apps/mobile
 flutter run --dart-define=API_ORIGIN=http://localhost:3001
 ```
 
-Android:
+Android, from the repository root, on branch `cursor/android-app-1b55`, after `flutter devices` lists an Android emulator or phone:
 
 ```bash
 cd apps/mobile
 flutter run -d android --dart-define=API_ORIGIN=http://10.0.2.2:3001
 ```
 
-`10.0.2.2` is the computer as seen from an Android emulator. A physical phone needs the computer's LAN address. The Android app is portrait-only and uses the Material interface. On a Mac with Xcode, `flutter run -d ios` installs the iPhone app, which uses the iOS interface. A physical iPhone needs the computer's LAN address in `API_ORIGIN`, because `localhost` on the phone is the phone itself. This Linux environment cannot compile the iOS app. Debug builds allow cleartext HTTP. A release build expects HTTPS.
+`10.0.2.2` is the computer as seen from an Android emulator. A physical phone needs the computer's LAN address. The iPhone simulator is a separate device, so this command waits until an Android emulator is running. See `apps/mobile/README.md` for creating that emulator. The Android app is portrait-only and uses the Material interface. On a Mac with Xcode, `flutter run -d ios` installs the iPhone app, which uses the iOS interface. A physical iPhone needs the computer's LAN address in `API_ORIGIN`, because `localhost` on the phone is the phone itself. This Linux environment cannot compile the iOS app. Debug builds allow cleartext HTTP. A release build expects HTTPS.
 
 Empty `S3_ACCESS_KEY_ID` or `S3_SECRET_ACCESS_KEY` selects the in-memory storage adapter. An empty `SQS_ENDPOINT` selects the in-memory queue. Fill those values, and the MinIO and ElasticMQ URLs in `.env.example`, when you want the Compose services. ElasticMQ does not authenticate; the client sends a non-secret local placeholder only when a key is blank and an endpoint is set.
 
