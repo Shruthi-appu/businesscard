@@ -22,18 +22,12 @@ class WalletScreen extends ConsumerWidget {
       return const _Message(text: 'Loading your wallet…');
     }
     if (session.hasError) {
-      return _SampleWallet(
-        notice: "We couldn't reach Softxu. The sample cards are still here.",
-        onRetry: () => ref.invalidate(sessionProvider),
-      );
+      return const _SampleWallet();
     }
     final wallet = ref.watch(walletProvider);
     return wallet.when(
       loading: () => const _Message(text: 'Loading your wallet…'),
-      error: (_, _) => _SampleWallet(
-        notice: "We couldn't reach Softxu. The sample cards are still here.",
-        onRetry: () => ref.invalidate(walletProvider),
-      ),
+      error: (_, _) => const _SampleWallet(),
       data: (load) {
         if (load is WalletDenied) {
           return const _SampleWallet(
@@ -41,11 +35,7 @@ class WalletScreen extends ConsumerWidget {
           );
         }
         if (load is WalletOffline) {
-          return _SampleWallet(
-            notice:
-                "We couldn't reach Softxu. The sample cards are still here.",
-            onRetry: () => ref.invalidate(walletProvider),
-          );
+          return const _SampleWallet();
         }
         final ready = load as WalletReady;
         final snapshot = ready.snapshot;
@@ -120,10 +110,9 @@ class WalletScreen extends ConsumerWidget {
 }
 
 class _SampleWallet extends ConsumerWidget {
-  const _SampleWallet({required this.notice, this.onRetry});
+  const _SampleWallet({this.notice});
 
-  final String notice;
-  final VoidCallback? onRetry;
+  final String? notice;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -163,9 +152,6 @@ class _SampleWallet extends ConsumerWidget {
           : TextButton(onPressed: signOut, child: const Text('Sign out')),
       body: CardsStage(
         notice: notice,
-        account: onRetry == null
-            ? null
-            : SoftxuSecondaryButton(onPressed: onRetry, label: 'Retry'),
         onAdd: () => context.push('/wallet/new'),
         onScan: () => context.push('/wallet/scan'),
         onDesign: () => context.push('/wallet/create'),

@@ -248,6 +248,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Open wallet'), findsOneWidget);
     expect(find.text('IncardIt'), findsOneWidget);
+    expect(find.textContaining("couldn't reach Softxu"), findsNothing);
     expect(find.text('Meera Iyer'), findsOneWidget);
     expect(find.text('Jonah Brooks'), findsOneWidget);
     await tester.tap(find.text('Open wallet'));
