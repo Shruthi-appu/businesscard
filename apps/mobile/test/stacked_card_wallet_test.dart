@@ -152,6 +152,46 @@ void main() {
     );
   });
 
+  testWidgets(
+    'advancing lifts the front card and brings the next one forward',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 844);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(_host(_sample(), onOpen: (_) {}));
+      await tester.pumpAndSettle();
+
+      final arjun = find.byKey(const ValueKey('card-arjun'));
+      final meera = find.byKey(const ValueKey('card-meera'));
+      final beforeArjun = tester.getRect(arjun);
+      final beforeMeera = tester.getRect(meera);
+      expect(beforeArjun.top, lessThan(beforeMeera.top));
+
+      final lift = await tester.startGesture(beforeArjun.center);
+      await lift.moveBy(const Offset(0, -90));
+      await lift.up();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 160));
+
+      final midArjun = tester.getRect(arjun);
+      final midMeera = tester.getRect(meera);
+      expect(midArjun.top, lessThan(beforeArjun.top - 8));
+      expect(midMeera.top, lessThan(beforeMeera.top - 4));
+      expect(midArjun.top, lessThan(midMeera.top));
+
+      await tester.pumpAndSettle();
+      final afterArjun = tester.getRect(arjun);
+      final afterMeera = tester.getRect(meera);
+      expect(afterMeera.top, lessThan(afterArjun.top));
+      expect((afterMeera.left - afterArjun.left).abs(), lessThan(2));
+      final rohan = tester.getRect(find.byKey(const ValueKey('card-rohan')));
+      expect(rohan.top, lessThan(afterMeera.bottom - 12));
+      expect(afterMeera.height, closeTo(beforeArjun.height, 2));
+    },
+  );
+
   testWidgets('the front card pops open and shows its details', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);

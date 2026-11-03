@@ -87,9 +87,10 @@ class WalletPass {
 /// them out one after another into a vertical column of wide landscape
 /// cards. The cards share one left edge, and each card overlaps the lower
 /// edge of the one above it. A tap on a lower card brings it to the top.
-/// Moving the pointer left or up brings the next card forward. Moving
-/// it right or down brings the previous card forward. A tap on the top
-/// card pops that card out and shows its details on the same card.
+/// Moving the pointer left or up brings the next card forward. The front
+/// card lifts off, and the card behind it moves into that place. Moving
+/// the pointer right or down brings the previous card forward. A tap on
+/// the top card pops that card out and shows its details on the same card.
 class CardsStage extends StatefulWidget {
   const CardsStage({
     super.key,

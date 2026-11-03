@@ -165,7 +165,9 @@ double _ease(double u) {
 /// card to the top. Moving the pointer left or up brings the next card
 /// forward. Moving it right or down brings the previous card forward.
 /// A tap on the top card pops that card forward and shows its details on
-/// the same card. [onOpen] runs as that pop starts.
+/// the same card. [onOpen] runs as that pop starts. Advancing lifts the
+/// foreground card off the pile and brings the next background card into
+/// its place.
 class StackedBusinessCardWallet extends StatefulWidget {
   const StackedBusinessCardWallet({
     super.key,
@@ -198,14 +200,18 @@ class StackedBusinessCardWallet extends StatefulWidget {
 }
 
 class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   String? _frontId;
   String? _popId;
+  int? _advanceFrom;
+  int _advanceDir = 1;
   double _dragX = 0;
   double _dragY = 0;
   double _tapTravel = 0;
   var _mutePop = false;
+  var _muteShift = false;
   late final AnimationController _pop;
+  late final AnimationController _shift;
 
   @override
   void initState() {
@@ -226,6 +232,22 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet>
             }
             setState(() => _popId = null);
           });
+    _shift =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 480),
+          )
+          ..addListener(() {
+            if (mounted && !_muteShift && _advanceFrom != null) setState(() {});
+          })
+          ..addStatusListener((status) {
+            if (_muteShift ||
+                status != AnimationStatus.completed ||
+                _advanceFrom == null) {
+              return;
+            }
+            setState(() => _advanceFrom = null);
+          });
   }
 
   @override
@@ -240,11 +262,15 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet>
       _popId = null;
       _mutePop = false;
     }
+    if (_advanceFrom != null && (widget.reveal < 1 || !widget.interactive)) {
+      _stopShift();
+    }
   }
 
   @override
   void dispose() {
     _pop.dispose();
+    _shift.dispose();
     super.dispose();
   }
 
@@ -272,10 +298,65 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet>
     setState(() => _frontId = widget.cards[next].id);
   }
 
+  void _stopShift() {
+    if (_advanceFrom == null && !_shift.isAnimating) return;
+    _muteShift = true;
+    _shift.stop();
+    _shift.value = 1;
+    _advanceFrom = null;
+    _muteShift = false;
+  }
+
   void _advance(int delta) {
     final count = widget.cards.length;
-    if (count == 0) return;
-    _setFront((_front + delta + count) % count);
+    if (count <= 1) return;
+    _stopShift();
+    final from = _front;
+    final next = (from + delta + count) % count;
+    if (next == from) return;
+    _advanceFrom = from;
+    _advanceDir = delta >= 0 ? 1 : -1;
+    setState(() => _frontId = widget.cards[next].id);
+    _shift.forward(from: 0);
+  }
+
+  bool get _shifting {
+    final from = _advanceFrom;
+    return from != null &&
+        from >= 0 &&
+        from < widget.cards.length &&
+        widget.reveal >= 1 &&
+        _popId == null;
+  }
+
+  double get _shiftT =>
+      Curves.easeInOutCubic.transform(_shift.value.clamp(0.0, 1.0));
+
+  /// Moves the foreground card off the pile, and the card behind it into
+  /// the foreground. Other cards step between those two positions.
+  Rect _shiftRect(int index, Rect start, Rect end) {
+    final t = _shiftT;
+    final traded = _advanceDir > 0 ? index == _advanceFrom : index == _front;
+    if (!traded) return Rect.lerp(start, end, t)!;
+    const split = 0.42;
+    final lifted = start.shift(
+      Offset(start.width * 0.045, -start.height * 0.48),
+    );
+    if (t < split) {
+      final u = Curves.easeOut.transform(t / split);
+      return Rect.lerp(start, lifted, u)!;
+    }
+    final u = Curves.easeOutCubic.transform((t - split) / (1 - split));
+    return Rect.lerp(lifted, end, u)!;
+  }
+
+  int _paintOrder(int index, List<StackedCardFrame> frames) {
+    if (!_shifting) return frames[index].depth;
+    if (_advanceDir > 0 && index == _advanceFrom) {
+      return _shiftT < 0.42 ? 1000 : -1;
+    }
+    if (_advanceDir < 0 && index == _front) return 1000;
+    return frames[index].depth;
   }
 
   void _noteDown() => _tapTravel = 0;
@@ -301,6 +382,7 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet>
     if (index < 0 || index >= widget.cards.length) return;
     final id = widget.cards[index].id;
     if (_popId == id) return;
+    _stopShift();
     setState(() => _popId = id);
     _pop.forward(from: 0);
     widget.onOpen?.call(index);
@@ -361,6 +443,25 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet>
     return Rect.lerp(tuck, frame.rect, rise)!;
   }
 
+  Rect _shownRect(
+    int index,
+    List<StackedCardFrame> frames,
+    List<StackedCardFrame>? fromFrames,
+  ) {
+    final end = _frameRect(frames[index], index);
+    if (!_shifting || fromFrames == null || widget.reveal < 1) return end;
+    return _shiftRect(index, fromFrames[index].rect, frames[index].rect);
+  }
+
+  int _shownDepth(int index, List<StackedCardFrame> frames) {
+    if (!_shifting) return frames[index].depth;
+    final lifting =
+        (_advanceDir > 0 && index == _advanceFrom && _shiftT < 0.42) ||
+        (_advanceDir < 0 && index == _front);
+    if (lifting) return 0;
+    return frames[index].depth;
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -372,13 +473,27 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet>
           height: constraints.maxHeight,
           topInset: widget.topInset,
         );
+        final fromFrames = _shifting
+            ? layoutStackedCards(
+                count: widget.cards.length,
+                frontIndex: _advanceFrom!,
+                width: constraints.maxWidth,
+                height: constraints.maxHeight,
+                topInset: widget.topInset,
+              )
+            : null;
         final order =
-            [for (var index = 0; index < frames.length; index++) index]
-              ..sort((a, b) {
-                final top = frames[a].rect.top.compareTo(frames[b].rect.top);
-                if (top != 0) return top;
-                return frames[b].depth.compareTo(frames[a].depth);
-              });
+            [for (var index = 0; index < frames.length; index++) index]..sort((
+              a,
+              b,
+            ) {
+              if (_shifting) {
+                return _paintOrder(a, frames).compareTo(_paintOrder(b, frames));
+              }
+              final top = frames[a].rect.top.compareTo(frames[b].rect.top);
+              if (top != 0) return top;
+              return frames[b].depth.compareTo(frames[a].depth);
+            });
         final open = widget.reveal >= 1;
         final canDrag = open && widget.interactive && _popId == null;
         final poppedAt = _popId == null
@@ -417,9 +532,9 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet>
                 if (index != poppedAt)
                   _placedCard(
                     index: index,
-                    rect: _frameRect(frames[index], index),
-                    depth: frames[index].depth,
-                    animate: open,
+                    rect: _shownRect(index, frames, fromFrames),
+                    depth: _shownDepth(index, frames),
+                    animate: open && !_shifting,
                     popped: false,
                     stageWidth: constraints.maxWidth,
                     stageHeight: constraints.maxHeight,
