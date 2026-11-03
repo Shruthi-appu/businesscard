@@ -5,7 +5,9 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../ui/softxu_controls.dart';
+import 'business_card.dart';
 import 'card_links.dart';
+import 'stacked_card_wallet.dart';
 
 /// Opens the account side menu from the header.
 class WalletMenuHandle {
@@ -81,10 +83,11 @@ class WalletPass {
 
 /// The exported Cards stage.
 ///
-/// Cards wait in the wallet. Open wallet deals them over 2300ms into the
-/// vertical fan. Close wallet runs that deal backwards. Once the fan is open,
-/// a vertical scroll eases the stack up or down. The card under the cursor
-/// opens halfway in its own slot. A press opens that card's detail page.
+/// Cards wait in the wallet. Open wallet deals them over 2300ms into a
+/// layered pile of horizontal cards. The front card is largest. Each card
+/// behind it sits higher and further right, with smaller steps toward the
+/// back. A tap on a back card brings it forward. A horizontal swipe moves
+/// through the pile. A tap on the front card opens its detail page.
 class CardsStage extends StatefulWidget {
   const CardsStage({
     super.key,
@@ -485,9 +488,19 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
         final label = done || closing ? 'Close wallet' : 'Open wallet';
         final showWallet = _intro < 1;
 
-        final openingIndex = _halfIndex != null && _half.value > 0
-            ? _halfIndex
-            : null;
+        final tuckWidth = math.max(120.0, deck.walletW - 28);
+        final tuckHeight = tuckWidth / stackedCardAspect;
+        final cardRecords = [
+          for (var index = 0; index < widget.passes.length; index++)
+            BusinessCardData(
+              id: 'wallet-pass-$index',
+              name: widget.passes[index].label,
+              designation: widget.passes[index].detail ?? '',
+              background:
+                  businessCardBackgrounds[index %
+                      businessCardBackgrounds.length],
+            ),
+        ];
 
         return Listener(
           onPointerSignal: _onPointerSignal,
@@ -509,12 +522,23 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
                           children: [
                             const Positioned.fill(child: SizedBox.expand()),
                             if (showWallet) _walletBack(deck, stageW, stageH),
-                            for (final placed in deck.cards)
-                              if (placed.index != openingIndex)
-                                _card(placed, deck),
-                            if (openingIndex != null &&
-                                openingIndex < deck.cards.length)
-                              _card(deck.cards[openingIndex], deck),
+                            Positioned.fill(
+                              child: StackedBusinessCardWallet(
+                                cards: cardRecords,
+                                reveal: _intro,
+                                topInset: deck.floor + (phone ? 56 : 64),
+                                tuckCenter: Offset(
+                                  stageW / 2,
+                                  deck.walletTop +
+                                      deck.seam +
+                                      tuckHeight * 0.18,
+                                ),
+                                tuckWidth: tuckWidth,
+                                tuckHeight: tuckHeight,
+                                interactive: done && !_menuOpen,
+                                onOpen: _pressCard,
+                              ),
+                            ),
                             if (showWallet) _walletFront(deck, stageW, stageH),
                           ],
                         ),
@@ -578,36 +602,6 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
           ),
         );
       },
-    );
-  }
-
-  Widget _card(_Placed placed, _Deck deck) {
-    final open = _openAmount(placed.index);
-    final grow = 1 + 0.5 * open;
-    final boxTop = placed.cy - placed.height / 2;
-    final boxLeft = placed.cx - placed.width * grow / 2;
-    final boxWidth = placed.width * grow;
-    final boxHeight = placed.height * grow;
-    final strip = _strip(placed, deck);
-    return Positioned(
-      left: boxLeft,
-      top: boxTop,
-      width: boxWidth,
-      height: boxHeight,
-      child: _HoverCard(
-        key: ValueKey('wallet-pass-${placed.index}'),
-        pass: widget.passes[placed.index],
-        palette: _palettes[placed.index % _palettes.length],
-        showBack: placed.index.isOdd,
-        scale: placed.scale,
-        scaleAlignment: open > 0 ? Alignment.topCenter : Alignment.center,
-        stripTop: strip.top - boxTop,
-        stripLeft: strip.left - boxLeft,
-        stripWidth: strip.width,
-        stripHeight: strip.height,
-        interactive: _intro >= 1,
-        onTap: () => _pressCard(placed.index),
-      ),
     );
   }
 
@@ -929,145 +923,6 @@ class _SideMenu extends StatelessWidget {
   }
 }
 
-class _HoverCard extends StatelessWidget {
-  const _HoverCard({
-    super.key,
-    required this.pass,
-    required this.palette,
-    required this.showBack,
-    required this.scale,
-    required this.scaleAlignment,
-    required this.stripTop,
-    required this.stripLeft,
-    required this.stripWidth,
-    required this.stripHeight,
-    required this.interactive,
-    required this.onTap,
-  });
-
-  final WalletPass pass;
-  final _Palette palette;
-  final bool showBack;
-  final double scale;
-  final Alignment scaleAlignment;
-  final double stripTop;
-  final double stripLeft;
-  final double stripWidth;
-  final double stripHeight;
-  final bool interactive;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        IgnorePointer(
-          child: Transform.scale(
-            scale: scale,
-            alignment: scaleAlignment,
-            child: _FanCard(pass: pass, palette: palette, showBack: showBack),
-          ),
-        ),
-        if (interactive && stripWidth > 0 && stripHeight > 0)
-          Positioned(
-            left: stripLeft,
-            top: stripTop,
-            width: stripWidth,
-            height: stripHeight,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: onTap,
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _FanCard extends StatelessWidget {
-  const _FanCard({
-    required this.pass,
-    required this.palette,
-    required this.showBack,
-  });
-
-  final WalletPass pass;
-  final _Palette palette;
-  final bool showBack;
-
-  @override
-  Widget build(BuildContext context) {
-    final face = ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          ColoredBox(color: showBack ? palette.field : palette.paper),
-          CustomPaint(painter: _FacePainter(palette, showBack)),
-          Align(
-            alignment: Alignment.topLeft,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, _fanPadTop, 14, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (pass.label.isNotEmpty)
-                    Text(
-                      pass.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: showBack ? palette.light : palette.ink,
-                        fontSize: _fanNameSize,
-                        height: _fanNameHeight,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  if (pass.detail != null && pass.detail!.isNotEmpty)
-                    Text(
-                      pass.detail!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: showBack ? palette.light : palette.ink,
-                        fontSize: _fanDetailSize,
-                        height: _fanDetailHeight,
-                      ),
-                    ),
-                  if (pass.favourite)
-                    Text(
-                      'Favourite',
-                      style: TextStyle(
-                        color: showBack ? palette.light : palette.ink,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x47000000),
-            blurRadius: 22,
-            offset: Offset(0, 12),
-          ),
-        ],
-      ),
-      child: face,
-    );
-  }
-}
-
 class _Placed {
   const _Placed({
     required this.index,
@@ -1381,213 +1236,6 @@ class _StitchPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _Palette {
-  const _Palette({
-    required this.ink,
-    required this.light,
-    required this.paper,
-    required this.panel,
-    required this.notch,
-    required this.ring,
-    required this.dot,
-    required this.field,
-    required this.sweep,
-    required this.squares,
-  });
-
-  final Color ink;
-  final Color light;
-  final Color paper;
-  final Color panel;
-  final Color notch;
-  final Color ring;
-  final Color dot;
-  final Color field;
-  final Color sweep;
-  final List<Color> squares;
-}
-
-/// Dark ink for names and details. Both faces use it so text stays readable
-/// on the light pastel paper.
-const _cardText = Color(0xFF241C19);
-
-const _palettes = <_Palette>[
-  _Palette(
-    ink: _cardText,
-    light: _cardText,
-    paper: Color(0xFFFDE8EF),
-    panel: Color(0xFFF7D3DE),
-    notch: Color(0xFFF3C6D4),
-    ring: Color(0xFFE8AFC2),
-    dot: Color(0xFFE09BB2),
-    field: Color(0xFFFDE8EF),
-    sweep: Color(0xFFF8D5E3),
-    squares: [
-      Color(0xFFF7D3DE),
-      Color(0xFFF3C6D4),
-      Color(0xFFFBE3EB),
-      Color(0xFFEAB8C8),
-    ],
-  ),
-  _Palette(
-    ink: _cardText,
-    light: _cardText,
-    paper: Color(0xFFE7F7F0),
-    panel: Color(0xFFD4EEE4),
-    notch: Color(0xFFC6E6D8),
-    ring: Color(0xFFA8D8C4),
-    dot: Color(0xFF8ECAB2),
-    field: Color(0xFFE7F7F0),
-    sweep: Color(0xFFD7F0E4),
-    squares: [
-      Color(0xFFD4EEE4),
-      Color(0xFFC6E6D8),
-      Color(0xFFE5F6EE),
-      Color(0xFFB6E0CE),
-    ],
-  ),
-  _Palette(
-    ink: _cardText,
-    light: _cardText,
-    paper: Color(0xFFFFF8E4),
-    panel: Color(0xFFFBEAB4),
-    notch: Color(0xFFF6E2A4),
-    ring: Color(0xFFF0D48A),
-    dot: Color(0xFFE6C56E),
-    field: Color(0xFFFFF8E4),
-    sweep: Color(0xFFF8E8B0),
-    squares: [
-      Color(0xFFFBEAB4),
-      Color(0xFFF6E2A4),
-      Color(0xFFFFF3D0),
-      Color(0xFFF0D898),
-    ],
-  ),
-  _Palette(
-    ink: _cardText,
-    light: _cardText,
-    paper: Color(0xFFE8F3FD),
-    panel: Color(0xFFD3E6F8),
-    notch: Color(0xFFC5DCF5),
-    ring: Color(0xFFAFCFF0),
-    dot: Color(0xFF96BEE8),
-    field: Color(0xFFE8F3FD),
-    sweep: Color(0xFFD6E8FA),
-    squares: [
-      Color(0xFFD3E6F8),
-      Color(0xFFC5DCF5),
-      Color(0xFFE6F2FC),
-      Color(0xFFB9D4F2),
-    ],
-  ),
-  _Palette(
-    ink: _cardText,
-    light: _cardText,
-    paper: Color(0xFFFFF1E6),
-    panel: Color(0xFFFADCC8),
-    notch: Color(0xFFF5D0B8),
-    ring: Color(0xFFF0B992),
-    dot: Color(0xFFE8A67A),
-    field: Color(0xFFFFF1E6),
-    sweep: Color(0xFFF8D7C4),
-    squares: [
-      Color(0xFFFADCC8),
-      Color(0xFFF5D0B8),
-      Color(0xFFFFE6D4),
-      Color(0xFFF0C4A8),
-    ],
-  ),
-  _Palette(
-    ink: _cardText,
-    light: _cardText,
-    paper: Color(0xFFF4EEFB),
-    panel: Color(0xFFE6D6F6),
-    notch: Color(0xFFDCC8F2),
-    ring: Color(0xFFCDB4EA),
-    dot: Color(0xFFBCA0E2),
-    field: Color(0xFFF4EEFB),
-    sweep: Color(0xFFE8D8F6),
-    squares: [
-      Color(0xFFE6D6F6),
-      Color(0xFFDCC8F2),
-      Color(0xFFF1E6FA),
-      Color(0xFFD0B8EE),
-    ],
-  ),
-];
-
-class _FacePainter extends CustomPainter {
-  const _FacePainter(this.palette, this.back);
-
-  final _Palette palette;
-  final bool back;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.save();
-    canvas.scale(size.width / 400, size.height / 680);
-    if (back) {
-      canvas.drawRect(
-        const Rect.fromLTWH(0, 0, 400, 680),
-        Paint()..color = palette.field,
-      );
-      final sweep = Path()
-        ..moveTo(0, 0)
-        ..lineTo(269, 0)
-        ..cubicTo(244, 81, 200, 182, 150, 222)
-        ..cubicTo(94, 266, 44, 239, 0, 316)
-        ..close();
-      canvas.drawPath(sweep, Paint()..color = palette.sweep);
-      for (var n = 0; n < palette.squares.length; n++) {
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(
-            Rect.fromLTWH(284 + (n % 2) * 46, 333 + (n ~/ 2) * 46, 32, 32),
-            const Radius.circular(3),
-          ),
-          Paint()..color = palette.squares[n],
-        );
-      }
-    } else {
-      canvas.drawRect(
-        const Rect.fromLTWH(0, 0, 400, 680),
-        Paint()..color = palette.paper,
-      );
-      final panel = Path()
-        ..moveTo(0, 0)
-        ..lineTo(179, 0)
-        ..cubicTo(206, 47, 230, 162, 205, 316)
-        ..cubicTo(183, 454, 154, 572, 123, 680)
-        ..lineTo(0, 680)
-        ..close();
-      canvas.drawPath(panel, Paint()..color = palette.panel);
-      final notch = Path()
-        ..moveTo(123, 680)
-        ..cubicTo(156, 680, 183, 586, 199, 482)
-        ..cubicTo(179, 572, 150, 680, 123, 680)
-        ..close();
-      canvas.drawPath(notch, Paint()..color = palette.notch);
-      canvas.drawCircle(
-        const Offset(74, 199),
-        42,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 8
-          ..color = palette.ring,
-      );
-      canvas.drawCircle(
-        const Offset(74, 199),
-        12,
-        Paint()..color = palette.dot,
-      );
-    }
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _FacePainter oldDelegate) =>
-      oldDelegate.back != back || oldDelegate.palette != palette;
 }
 
 /// Values and icons for one card. Field titles stay off the page.

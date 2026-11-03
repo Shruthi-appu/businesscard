@@ -95,6 +95,14 @@ void main() {
 
     await tester.tap(find.text('Open wallet'));
     await tester.pumpAndSettle();
+    for (var step = 0; step < 20; step++) {
+      await tester.fling(
+        find.byKey(const ValueKey('stacked-card-wallet')),
+        const Offset(-280, 0),
+        1200,
+      );
+      await tester.pumpAndSettle();
+    }
     await tester.tap(find.text('Ada Lovelace'));
     await tester.pumpAndSettle();
     expect(find.text('ada@example.com'), findsWidgets);
