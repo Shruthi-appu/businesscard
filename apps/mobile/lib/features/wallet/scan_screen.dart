@@ -8,6 +8,7 @@ import '../../core/api_problem.dart';
 import '../../core/providers.dart';
 import '../../ui/softxu_controls.dart';
 import '../auth/session_controller.dart';
+import 'card_fields.dart';
 import 'wallet_controller.dart';
 
 const _samplePng =
@@ -62,7 +63,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
             const SizedBox(height: 24),
             const Text('Check the fields', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
             const SizedBox(height: 12),
-            SoftxuField(controller: _name, label: 'Name'),
+            CardIconField(
+              field: 'name',
+              controller: _name,
+              keyboardType: TextInputType.name,
+            ),
             const SizedBox(height: 12),
             SoftxuField(controller: _email, label: 'Email'),
             const SizedBox(height: 12),

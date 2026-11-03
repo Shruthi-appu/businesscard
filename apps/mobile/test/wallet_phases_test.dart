@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:softxu/app.dart';
 import 'package:softxu/core/providers.dart';
+import 'package:softxu/features/wallet/card_fields.dart';
 
 void main() {
   setUp(() {
@@ -97,7 +98,18 @@ void main() {
     await tester.tap(find.text('Read the sample card'));
     await tester.pumpAndSettle();
     expect(find.text('Check the fields'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
+    expect(find.text('Name'), findsNothing);
+    expect(find.text('Business category'), findsNothing);
+    expect(find.text('Address'), findsNothing);
+    expect(find.text('Location'), findsNothing);
+    expect(find.text('WhatsApp'), findsNothing);
+    expect(find.text('Facebook'), findsNothing);
+    expect(find.text('Instagram'), findsNothing);
+    expect(find.text('QR code'), findsNothing);
+    expect(find.text('Website'), findsNothing);
+    expect(find.byIcon(cardNameIcon), findsOneWidget);
+    expect(find.text('Ada Lovelace'), findsWidgets);
+    expect(find.text('ada@analytical.example'), findsOneWidget);
   });
 }
 

@@ -134,12 +134,9 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
     if (addresses is List) {
       for (final row in addresses) {
         if (row is! Map || row['id'] is! String) continue;
-        fields.add(
-          _Field(
-            id: row['id'] as String,
-            label: row['formattedAddress'] as String? ?? 'Address',
-          ),
-        );
+        final street = row['formattedAddress'] as String? ?? '';
+        if (street.isEmpty) continue;
+        fields.add(_Field(id: row['id'] as String, label: street));
       }
     }
     final socials = body['socials'];
@@ -309,7 +306,11 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
             const SizedBox(height: 12),
             SoftxuField(controller: _title, label: 'Card title'),
             const SizedBox(height: 12),
-            SoftxuField(controller: _name, label: 'Name'),
+            CardIconField(
+              field: 'name',
+              controller: _name,
+              keyboardType: TextInputType.name,
+            ),
             const SizedBox(height: 12),
             SoftxuField(controller: _email, label: 'Email'),
             const SizedBox(height: 12),
@@ -317,57 +318,43 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
             const SizedBox(height: 12),
             SoftxuField(controller: _company, label: 'Company'),
             const SizedBox(height: 12),
-            CardIconField(
-              field: 'category',
-              controller: _category,
-              label: 'Business category',
-            ),
+            CardIconField(field: 'category', controller: _category),
             const SizedBox(height: 12),
             CardIconField(
               field: 'address',
               controller: _address,
-              label: 'Address',
               keyboardType: TextInputType.streetAddress,
             ),
             const SizedBox(height: 12),
-            CardIconField(
-              field: 'location',
-              controller: _location,
-              label: 'Location',
-            ),
+            CardIconField(field: 'location', controller: _location),
             const SizedBox(height: 12),
             CardIconField(
               field: 'whatsapp',
               controller: _whatsapp,
-              label: 'WhatsApp',
               keyboardType: TextInputType.phone,
             ),
             const SizedBox(height: 12),
             CardIconField(
               field: 'facebook',
               controller: _facebook,
-              label: 'Facebook',
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 12),
             CardIconField(
               field: 'instagram',
               controller: _instagram,
-              label: 'Instagram',
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 12),
             CardIconField(
               field: 'qr',
               controller: _qr,
-              label: 'QR code',
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 12),
             CardIconField(
               field: 'website',
               controller: _website,
-              label: 'Website',
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 16),

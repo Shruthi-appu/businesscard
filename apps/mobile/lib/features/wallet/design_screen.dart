@@ -6,6 +6,7 @@ import '../../core/api_problem.dart';
 import '../../core/providers.dart';
 import '../../ui/softxu_controls.dart';
 import '../auth/session_controller.dart';
+import 'card_fields.dart';
 
 class _Template {
   const _Template({required this.key, required this.name, required this.colors, required this.scales});
@@ -134,7 +135,11 @@ class _DesignScreenState extends ConsumerState<DesignScreen> {
             ),
           SoftxuField(controller: _title, label: 'Card title'),
           const SizedBox(height: 12),
-          SoftxuField(controller: _name, label: 'Name'),
+          CardIconField(
+            field: 'name',
+            controller: _name,
+            keyboardType: TextInputType.name,
+          ),
           const SizedBox(height: 12),
           SoftxuField(controller: _email, label: 'Public email'),
           const SizedBox(height: 12),

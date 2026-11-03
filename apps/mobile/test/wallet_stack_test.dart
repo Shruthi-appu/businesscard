@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:softxu/features/wallet/card_fields.dart';
 import 'package:softxu/features/wallet/test_cards.dart';
 import 'package:softxu/features/wallet/wallet_stack.dart';
 
@@ -89,6 +90,111 @@ void main() {
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('open-card')), findsNothing);
+  });
+
+  testWidgets('an open sample card shows values and icons without titles', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final card = testCards.first;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CardsStage(
+            onAdd: _noop,
+            onScan: _noop,
+            onDesign: _noop,
+            passes: [card.toPass()],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open wallet'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(card.name));
+    await tester.pumpAndSettle();
+
+    final open = find.byKey(const ValueKey('open-card'));
+    expect(open, findsOneWidget);
+    for (final title in const [
+      'Name',
+      'Business category',
+      'Address',
+      'Location',
+      'WhatsApp',
+      'Facebook',
+      'Instagram',
+      'QR code',
+      'Website',
+    ]) {
+      expect(
+        _inOpen(open, find.text(title, skipOffstage: false)),
+        findsNothing,
+      );
+    }
+    for (final value in [
+      card.name,
+      card.category,
+      card.address,
+      card.location,
+      card.whatsapp,
+      card.facebook,
+      card.instagram,
+      card.qr,
+      card.website,
+    ]) {
+      expect(
+        _inOpen(open, find.text(value, skipOffstage: false)),
+        findsOneWidget,
+      );
+    }
+    expect(
+      _inOpen(
+        open,
+        find.textContaining('google.com/maps', skipOffstage: false),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      _inOpen(open, find.byIcon(cardNameIcon, skipOffstage: false)),
+      findsOneWidget,
+    );
+    expect(
+      _inOpen(open, find.byIcon(cardCategoryIcon, skipOffstage: false)),
+      findsOneWidget,
+    );
+    expect(
+      _inOpen(open, find.byIcon(cardAddressIcon, skipOffstage: false)),
+      findsOneWidget,
+    );
+    expect(
+      _inOpen(open, find.byIcon(cardLocationIcon, skipOffstage: false)),
+      findsOneWidget,
+    );
+    expect(
+      _inOpen(open, find.byIcon(cardWhatsappIcon, skipOffstage: false)),
+      findsOneWidget,
+    );
+    expect(
+      _inOpen(open, find.byIcon(Icons.facebook, skipOffstage: false)),
+      findsOneWidget,
+    );
+    expect(
+      _inOpen(open, find.byType(InstagramMark, skipOffstage: false)),
+      findsOneWidget,
+    );
+    expect(
+      _inOpen(open, find.byIcon(cardQrIcon, skipOffstage: false)),
+      findsOneWidget,
+    );
+    expect(
+      _inOpen(open, find.byIcon(cardWebsiteIcon, skipOffstage: false)),
+      findsOneWidget,
+    );
   });
 
   testWidgets('twenty test cards deal out of the pocket', (tester) async {
@@ -209,3 +315,7 @@ void main() {
 }
 
 void _noop() {}
+
+Finder _inOpen(Finder open, Finder matching) {
+  return find.descendant(of: open, matching: matching, skipOffstage: false);
+}

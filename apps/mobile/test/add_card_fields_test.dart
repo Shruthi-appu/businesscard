@@ -196,47 +196,21 @@ void main() {
     expect(find.byType(InstagramMark), findsOneWidget);
     expect(find.byIcon(cardQrIcon), findsOneWidget);
     expect(find.byIcon(cardWebsiteIcon), findsOneWidget);
+    _expectNoFieldTitles();
 
     await tester.tap(find.widgetWithText(FilledButton, 'Save card'));
     await tester.pumpAndSettle();
     expect(find.text('Enter a name.'), findsOneWidget);
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Name'),
-      'Ada Lovelace',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Business category'),
-      'Engines',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Address'),
-      '12 Engine Court',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Location'),
-      'Koramangala',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'WhatsApp'),
-      '+14155550100',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Facebook'),
-      '@analytical',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Instagram'),
-      'analytical',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'QR code'),
-      'softxu.test/ada',
-    );
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Website'),
-      'analytical.example',
-    );
+    await tester.enterText(_cardField('name'), 'Ada Lovelace');
+    await tester.enterText(_cardField('category'), 'Engines');
+    await tester.enterText(_cardField('address'), '12 Engine Court');
+    await tester.enterText(_cardField('location'), 'Koramangala');
+    await tester.enterText(_cardField('whatsapp'), '+14155550100');
+    await tester.enterText(_cardField('facebook'), '@analytical');
+    await tester.enterText(_cardField('instagram'), 'analytical');
+    await tester.enterText(_cardField('qr'), 'softxu.test/ada');
+    await tester.enterText(_cardField('website'), 'analytical.example');
     await tester.tap(find.widgetWithText(FilledButton, 'Save card'));
     await tester.pumpAndSettle();
 
@@ -249,7 +223,54 @@ void main() {
     expect(find.text('https://www.instagram.com/analytical'), findsWidgets);
     expect(find.text('https://softxu.test/ada'), findsWidgets);
     expect(find.text('https://analytical.example'), findsWidgets);
+    expect(find.text('Edit card'), findsOneWidget);
+    expect(find.text('Save changes'), findsOneWidget);
+    expect(find.byIcon(cardNameIcon), findsWidgets);
+    expect(find.byIcon(cardCategoryIcon), findsWidgets);
+    expect(find.byIcon(cardAddressIcon), findsWidgets);
+    expect(find.byIcon(cardLocationIcon), findsWidgets);
+    expect(find.byIcon(cardWhatsappIcon), findsWidgets);
+    expect(find.byIcon(Icons.facebook), findsWidgets);
+    expect(find.byType(InstagramMark), findsWidgets);
+    expect(find.byIcon(cardQrIcon), findsWidgets);
+    expect(find.byIcon(cardWebsiteIcon), findsWidgets);
+    expect(_cardField('name'), findsOneWidget);
+    expect(_cardField('category'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(_cardField('name')).controller?.text,
+      'Ada Lovelace',
+    );
+    expect(
+      tester.widget<TextField>(_cardField('category')).controller?.text,
+      'Engines',
+    );
+    _expectNoFieldTitles();
   });
+}
+
+const _fieldTitles = [
+  'Name',
+  'Business category',
+  'Address',
+  'Location',
+  'WhatsApp',
+  'Facebook',
+  'Instagram',
+  'QR code',
+  'Website',
+];
+
+Finder _cardField(String field) {
+  return find.descendant(
+    of: find.byKey(ValueKey('card-field-$field')),
+    matching: find.byType(TextField),
+  );
+}
+
+void _expectNoFieldTitles() {
+  for (final title in _fieldTitles) {
+    expect(find.text(title), findsNothing);
+  }
 }
 
 http.Response _json(Object body, [int status = 200]) {

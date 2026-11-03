@@ -129,18 +129,17 @@ class CardIconField extends StatelessWidget {
     super.key,
     required this.field,
     required this.controller,
-    required this.label,
     this.keyboardType,
   });
 
   final String field;
   final TextEditingController controller;
-  final String label;
   final TextInputType? keyboardType;
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      key: ValueKey('card-field-$field'),
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         CardFieldIcon(field),
@@ -148,7 +147,6 @@ class CardIconField extends StatelessWidget {
         Expanded(
           child: SoftxuField(
             controller: controller,
-            label: label,
             keyboardType: keyboardType,
           ),
         ),

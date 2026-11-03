@@ -15,7 +15,7 @@ class SoftxuField extends StatelessWidget {
   const SoftxuField({
     super.key,
     required this.controller,
-    required this.label,
+    this.label,
     this.obscure = false,
     this.keyboardType,
     this.autofillHints,
@@ -23,7 +23,7 @@ class SoftxuField extends StatelessWidget {
   });
 
   final TextEditingController controller;
-  final String label;
+  final String? label;
   final bool obscure;
   final TextInputType? keyboardType;
   final Iterable<String>? autofillHints;
@@ -31,10 +31,11 @@ class SoftxuField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final caption = (label == null || label!.isEmpty) ? null : label;
     if (iphoneApp) {
       return CupertinoTextField(
         controller: controller,
-        placeholder: label,
+        placeholder: caption,
         obscureText: obscure,
         keyboardType: keyboardType,
         autofillHints: autofillHints,
@@ -53,7 +54,7 @@ class SoftxuField extends StatelessWidget {
       keyboardType: keyboardType,
       autofillHints: autofillHints,
       onChanged: onChanged,
-      decoration: InputDecoration(labelText: label),
+      decoration: InputDecoration(labelText: caption),
     );
   }
 }
@@ -122,7 +123,13 @@ class SoftxuSecondaryButton extends StatelessWidget {
 }
 
 class SoftxuPage extends StatelessWidget {
-  const SoftxuPage({super.key, required this.body, this.title, this.trailing, this.leading});
+  const SoftxuPage({
+    super.key,
+    required this.body,
+    this.title,
+    this.trailing,
+    this.leading,
+  });
 
   final String? title;
   final Widget? trailing;
