@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import 'card_fields.dart';
@@ -37,7 +38,9 @@ class WalletPass {
 /// The exported Cards stage.
 ///
 /// Cards wait in the wallet. Open wallet deals them over 2300ms into the
-/// vertical fan from the Next.js engine. Close wallet runs that deal backwards.
+/// vertical fan. Close wallet runs that deal backwards. Once the fan is open,
+/// a vertical scroll eases the stack up or down, and the card under the cursor
+/// opens halfway in its own slot.
 class CardsStage extends StatefulWidget {
   const CardsStage({
     super.key,
@@ -64,29 +67,66 @@ class CardsStage extends StatefulWidget {
   State<CardsStage> createState() => _CardsStageState();
 }
 
-class _CardsStageState extends State<CardsStage>
-    with SingleTickerProviderStateMixin {
+class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   static const _introMs = 2300;
   static const _wallet = Color(0xFFDD1331);
   static const _ink = Color(0xFFF4F1EA);
 
   late final AnimationController _deal;
+  late final AnimationController _half;
+  late final AnimationController _scrollAnim;
   int? _hover;
+  int? _halfIndex;
   int? _opened;
   var _menuOpen = false;
+  double _scroll = 0;
+  double _scrollFrom = 0;
+  double _scrollTarget = 0;
+  double _scrollLimit = 180;
 
   @override
   void initState() {
     super.initState();
-    _deal = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: _introMs),
-    )..addListener(() => setState(() {}));
+    _deal =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: _introMs),
+        )..addListener(() {
+          if (mounted) setState(() {});
+        });
+    _half =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 220),
+          )
+          ..addListener(() {
+            if (mounted) setState(() {});
+          })
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.dismissed &&
+                _hover == null &&
+                mounted) {
+              setState(() => _halfIndex = null);
+            }
+          });
+    _scrollAnim =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 180),
+        )..addListener(() {
+          if (!mounted) return;
+          final t = Curves.easeOutCubic.transform(_scrollAnim.value);
+          setState(() {
+            _scroll = _scrollFrom + (_scrollTarget - _scrollFrom) * t;
+          });
+        });
   }
 
   @override
   void dispose() {
     _deal.dispose();
+    _half.dispose();
+    _scrollAnim.dispose();
     super.dispose();
   }
 
@@ -99,10 +139,123 @@ class _CardsStageState extends State<CardsStage>
 
   void _close() {
     if (_deal.isAnimating || _deal.value <= 0) return;
+    _scroll = 0;
+    _scrollFrom = 0;
+    _scrollTarget = 0;
+    _scrollAnim.stop();
+    _setHover(null);
     _deal.reverse();
   }
 
+  double _openAmount(int index) {
+    if (_intro < 1 || _halfIndex != index) return 0;
+    return Curves.easeOutCubic.transform(_half.value);
+  }
+
+  void _nudgeScroll(double dy) {
+    if (_intro < 1 || _opened != null || _menuOpen || dy == 0) return;
+    _scrollFrom = _scroll;
+    final limit = _scrollLimit;
+    _scrollTarget = (_scrollTarget + dy).clamp(-limit, limit).toDouble();
+    _scrollAnim.forward(from: 0);
+  }
+
+  void _onPointerSignal(PointerSignalEvent event) {
+    if (event is PointerScrollEvent) {
+      _nudgeScroll(event.scrollDelta.dy);
+    }
+  }
+
+  void _onPanZoom(PointerPanZoomUpdateEvent event) {
+    _nudgeScroll(event.panDelta.dy);
+  }
+
+  void _setHover(int? index) {
+    if (index == _hover) return;
+    if (index == null) {
+      setState(() => _hover = null);
+      if (_half.value > 0) {
+        _half.reverse();
+      } else if (_halfIndex != null) {
+        setState(() => _halfIndex = null);
+      }
+      return;
+    }
+    if (_halfIndex != null && _halfIndex != index && _half.value > 0) {
+      _half.value = 0;
+    }
+    setState(() {
+      _hover = index;
+      _halfIndex = index;
+    });
+    _half.forward();
+  }
+
+  _Deck _present(_Deck deck) {
+    final active = _intro >= 1;
+    final scroll = active ? _scroll : 0.0;
+    final halfIndex = _halfIndex;
+    final openT = active && halfIndex != null
+        ? Curves.easeOutCubic.transform(_half.value)
+        : 0.0;
+    if (scroll == 0 && openT == 0) return deck;
+    final cards = <_Placed>[
+      for (final card in deck.cards)
+        _Placed(
+          index: card.index,
+          cx: card.cx,
+          cy: card.cy + scroll,
+          width: card.width,
+          height: card.height,
+          scale: card.scale,
+        ),
+    ];
+    if (halfIndex != null &&
+        openT > 0 &&
+        halfIndex >= 0 &&
+        halfIndex < cards.length - 1) {
+      final host = cards[halfIndex];
+      final hostTop = host.cy - host.height / 2;
+      final hostBottom = hostTop + host.height * (1 + 0.5 * openT);
+      final belowTop =
+          cards[halfIndex + 1].cy - cards[halfIndex + 1].height / 2;
+      final extra = math.max(0.0, hostBottom - belowTop);
+      if (extra > 0) {
+        for (var i = halfIndex + 1; i < cards.length; i++) {
+          final card = cards[i];
+          cards[i] = _Placed(
+            index: card.index,
+            cx: card.cx,
+            cy: card.cy + extra,
+            width: card.width,
+            height: card.height,
+            scale: card.scale,
+          );
+        }
+      }
+    }
+    return _Deck(
+      cards: cards,
+      walletTop: deck.walletTop,
+      walletW: deck.walletW,
+      seam: deck.seam,
+      wordmarkTop: deck.wordmarkTop,
+      wordmarkSize: deck.wordmarkSize,
+      floor: deck.floor,
+    );
+  }
+
   Rect _strip(_Placed placed, _Deck deck) {
+    final open = _openAmount(placed.index);
+    if (open > 0) {
+      final grow = 1 + 0.5 * open;
+      return Rect.fromLTWH(
+        placed.cx - placed.width * grow / 2,
+        placed.cy - placed.height / 2,
+        placed.width * grow,
+        placed.height * grow,
+      );
+    }
     final box = Rect.fromCenter(
       center: Offset(placed.cx, placed.cy),
       width: placed.width,
@@ -151,7 +304,7 @@ class _CardsStageState extends State<CardsStage>
         final stageH = constraints.maxHeight;
         final viewport = MediaQuery.sizeOf(context);
         final phone = viewport.width < 760;
-        final deck = _layout(
+        final laidOut = _layout(
           stageW: stageW,
           stageH: stageH,
           viewportW: viewport.width,
@@ -160,6 +313,11 @@ class _CardsStageState extends State<CardsStage>
           count: widget.passes.length,
           intro: _intro,
         );
+        final cardH = laidOut.cards.isEmpty
+            ? 180.0
+            : laidOut.cards.first.height;
+        _scrollLimit = math.max(72, math.min(stageH * 0.34, cardH * 0.8));
+        final deck = _present(laidOut);
         final closing = _deal.status == AnimationStatus.reverse;
         final done = _intro >= 1 && !closing;
         final label = done || closing ? 'Close wallet' : 'Open wallet';
@@ -173,124 +331,146 @@ class _CardsStageState extends State<CardsStage>
             .toDouble();
         final showWallet = _intro < 1;
 
-        return MouseRegion(
-          onHover: (event) => _trackHover(event.localPosition, deck),
-          onExit: (_) {
-            if (_hover != null) setState(() => _hover = null);
-          },
-          child: ColoredBox(
-            color: const Color(0xFFFFFFFF),
-            child: ClipRect(
-              child: Stack(
-                children: [
-                  if (showWallet) _walletBack(deck, stageW, stageH),
-                  for (final placed in deck.cards)
-                    if (placed.index != _hover) _card(placed, deck),
-                  if (showWallet) _walletFront(deck, stageW, stageH),
-                  Positioned(
-                    top: deck.wordmarkTop,
-                    left: 0,
-                    right: 0,
-                    child: IgnorePointer(
-                      child: Text(
-                        'IncardIt',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: 'Georgia',
-                          fontSize: deck.wordmarkSize,
-                          height: 0.86,
-                          letterSpacing: deck.wordmarkSize * -0.04,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF0F0F0F),
+        final openingIndex = _halfIndex != null && _half.value > 0
+            ? _halfIndex
+            : null;
+
+        return Listener(
+          onPointerSignal: _onPointerSignal,
+          onPointerPanZoomUpdate: _onPanZoom,
+          child: MouseRegion(
+            onHover: (event) => _trackHover(event.localPosition, deck),
+            onExit: (_) => _setHover(null),
+            child: ColoredBox(
+              color: const Color(0xFFFFFFFF),
+              child: ClipRect(
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: Listener(
+                        behavior: HitTestBehavior.translucent,
+                        onPointerMove: (event) {
+                          if (!event.down) return;
+                          _nudgeScroll(event.delta.dy);
+                        },
+                        child: Stack(
+                          children: [
+                            const Positioned.fill(child: SizedBox.expand()),
+                            if (showWallet) _walletBack(deck, stageW, stageH),
+                            for (final placed in deck.cards)
+                              if (placed.index != openingIndex)
+                                _card(placed, deck),
+                            if (openingIndex != null &&
+                                openingIndex < deck.cards.length)
+                              _card(deck.cards[openingIndex], deck),
+                            if (showWallet) _walletFront(deck, stageW, stageH),
+                          ],
                         ),
                       ),
                     ),
-                  ),
-                  if (widget.fromCache || widget.notice != null)
                     Positioned(
-                      top: deck.wordmarkTop + deck.wordmarkSize,
-                      left: 24,
-                      right: 24,
-                      child: Text(
-                        widget.fromCache
-                            ? 'Saved on this device. These cards may be out of date.'
-                            : widget.notice!,
-                        textAlign: TextAlign.center,
+                      top: deck.wordmarkTop,
+                      left: 0,
+                      right: 0,
+                      child: IgnorePointer(
+                        child: Text(
+                          'IncardIt',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Georgia',
+                            fontSize: deck.wordmarkSize,
+                            height: 0.86,
+                            letterSpacing: deck.wordmarkSize * -0.04,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF0F0F0F),
+                          ),
+                        ),
                       ),
                     ),
-                  Positioned(
-                    left: insetX,
-                    top: navTop,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (widget.menu != null) ...[
-                          _MenuButton(
+                    if (widget.fromCache || widget.notice != null)
+                      Positioned(
+                        top: deck.wordmarkTop + deck.wordmarkSize,
+                        left: 24,
+                        right: 24,
+                        child: Text(
+                          widget.fromCache
+                              ? 'Saved on this device. These cards may be out of date.'
+                              : widget.notice!,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    Positioned(
+                      left: insetX,
+                      top: navTop,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (widget.menu != null) ...[
+                            _MenuButton(
+                              height: btnH,
+                              onPressed: () => setState(() => _menuOpen = true),
+                            ),
+                            SizedBox(height: gap),
+                          ],
+                          _Pill(
+                            label: 'Add+',
                             height: btnH,
-                            onPressed: () => setState(() => _menuOpen = true),
+                            scale: navScale,
+                            onPressed: widget.onAdd,
                           ),
                           SizedBox(height: gap),
+                          _Pill(
+                            label: 'Scan',
+                            height: btnH,
+                            scale: navScale,
+                            onPressed: widget.onScan,
+                          ),
+                          SizedBox(height: gap),
+                          _Pill(
+                            label: 'Design',
+                            height: btnH,
+                            scale: navScale,
+                            onPressed: widget.onDesign,
+                          ),
                         ],
-                        _Pill(
-                          label: 'Add+',
-                          height: btnH,
-                          scale: navScale,
-                          onPressed: widget.onAdd,
-                        ),
-                        SizedBox(height: gap),
-                        _Pill(
-                          label: 'Scan',
-                          height: btnH,
-                          scale: navScale,
-                          onPressed: widget.onScan,
-                        ),
-                        SizedBox(height: gap),
-                        _Pill(
-                          label: 'Design',
-                          height: btnH,
-                          scale: navScale,
-                          onPressed: widget.onDesign,
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_hover != null && _hover! < deck.cards.length)
-                    _card(deck.cards[_hover!], deck),
-                  if (_opened != null && _opened! < widget.passes.length)
-                    Positioned.fill(
-                      child: _OpenCard(
-                        pass: widget.passes[_opened!],
-                        palette: _palettes[_opened! % _palettes.length],
-                        showBack: _opened!.isOdd,
-                        onClose: () => setState(() => _opened = null),
                       ),
                     ),
-                  Positioned(
-                    right: phone ? 12 : 18,
-                    top: deck.floor + 8,
-                    child: _Pill(
-                      label: label,
-                      height: phone ? 36 : 40,
-                      scale: 1,
-                      onPressed: _deal.isAnimating
-                          ? null
-                          : () {
-                              if (_intro >= 1) {
-                                _close();
-                              } else {
-                                _open();
-                              }
-                            },
-                    ),
-                  ),
-                  if (_menuOpen && widget.menu != null)
-                    Positioned.fill(
-                      child: _SideMenu(
-                        onClose: () => setState(() => _menuOpen = false),
-                        child: widget.menu!,
+                    if (_opened != null && _opened! < widget.passes.length)
+                      Positioned.fill(
+                        child: _OpenCard(
+                          pass: widget.passes[_opened!],
+                          palette: _palettes[_opened! % _palettes.length],
+                          showBack: _opened!.isOdd,
+                          onClose: () => setState(() => _opened = null),
+                        ),
+                      ),
+                    Positioned(
+                      right: phone ? 12 : 18,
+                      top: deck.floor + 8,
+                      child: _Pill(
+                        label: label,
+                        height: phone ? 36 : 40,
+                        scale: 1,
+                        onPressed: _deal.isAnimating
+                            ? null
+                            : () {
+                                if (_intro >= 1) {
+                                  _close();
+                                } else {
+                                  _open();
+                                }
+                              },
                       ),
                     ),
-                ],
+                    if (_menuOpen && widget.menu != null)
+                      Positioned.fill(
+                        child: _SideMenu(
+                          onClose: () => setState(() => _menuOpen = false),
+                          child: widget.menu!,
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -300,38 +480,44 @@ class _CardsStageState extends State<CardsStage>
   }
 
   Widget _card(_Placed placed, _Deck deck) {
+    final open = _openAmount(placed.index);
+    final grow = 1 + 0.5 * open;
     final boxTop = placed.cy - placed.height / 2;
-    final boxLeft = placed.cx - placed.width / 2;
+    final boxLeft = placed.cx - placed.width * grow / 2;
+    final boxWidth = placed.width * grow;
+    final boxHeight = placed.height * grow;
     final strip = _strip(placed, deck);
     return Positioned(
       left: boxLeft,
       top: boxTop,
-      width: placed.width,
-      height: placed.height,
+      width: boxWidth,
+      height: boxHeight,
       child: _HoverCard(
         key: ValueKey('wallet-pass-${placed.index}'),
         pass: widget.passes[placed.index],
         palette: _palettes[placed.index % _palettes.length],
         showBack: placed.index.isOdd,
         scale: placed.scale,
-        lifted: _hover == placed.index && _opened == null,
+        scaleAlignment: open > 0 ? Alignment.topCenter : Alignment.center,
         stripTop: strip.top - boxTop,
         stripLeft: strip.left - boxLeft,
         stripWidth: strip.width,
         stripHeight: strip.height,
         interactive: _intro >= 1 && _opened == null,
-        onTap: () => setState(() => _opened = placed.index),
+        onTap: () {
+          setState(() => _opened = placed.index);
+          _setHover(null);
+        },
       ),
     );
   }
 
   void _trackHover(Offset local, _Deck deck) {
-    if (_intro < 1 || _opened != null) {
-      if (_hover != null) setState(() => _hover = null);
+    if (_intro < 1 || _opened != null || _menuOpen) {
+      _setHover(null);
       return;
     }
-    final index = _indexAt(local, deck);
-    if (index != _hover) setState(() => _hover = index);
+    _setHover(_indexAt(local, deck));
   }
 
   Widget _walletBack(_Deck deck, double stageW, double stageH) {
@@ -614,7 +800,7 @@ class _HoverCard extends StatelessWidget {
     required this.palette,
     required this.showBack,
     required this.scale,
-    required this.lifted,
+    required this.scaleAlignment,
     required this.stripTop,
     required this.stripLeft,
     required this.stripWidth,
@@ -627,7 +813,7 @@ class _HoverCard extends StatelessWidget {
   final _Palette palette;
   final bool showBack;
   final double scale;
-  final bool lifted;
+  final Alignment scaleAlignment;
   final double stripTop;
   final double stripLeft;
   final double stripWidth;
@@ -643,10 +829,8 @@ class _HoverCard extends StatelessWidget {
         IgnorePointer(
           child: Transform.scale(
             scale: scale,
-            child: _Lift(
-              lifted: lifted,
-              child: _FanCard(pass: pass, palette: palette, showBack: showBack),
-            ),
+            alignment: scaleAlignment,
+            child: _FanCard(pass: pass, palette: palette, showBack: showBack),
           ),
         ),
         if (interactive && stripWidth > 0 && stripHeight > 0)
@@ -661,30 +845,6 @@ class _HoverCard extends StatelessWidget {
             ),
           ),
       ],
-    );
-  }
-}
-
-class _Lift extends StatelessWidget {
-  const _Lift({required this.lifted, required this.child});
-
-  final bool lifted;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(end: lifted ? -0.5 : 0),
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      builder: (context, dy, child) {
-        return FractionalTranslation(
-          translation: Offset(0, dy),
-          transformHitTests: false,
-          child: child,
-        );
-      },
-      child: child,
     );
   }
 }
@@ -712,7 +872,7 @@ class _FanCard extends StatelessWidget {
           Align(
             alignment: Alignment.topLeft,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+              padding: const EdgeInsets.fromLTRB(14, _fanPadTop, 14, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -724,8 +884,8 @@ class _FanCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: showBack ? palette.light : palette.ink,
-                        fontSize: 16,
-                        height: 1.15,
+                        fontSize: _fanNameSize,
+                        height: _fanNameHeight,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.2,
                       ),
@@ -737,8 +897,8 @@ class _FanCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: showBack ? palette.light : palette.ink,
-                        fontSize: 13,
-                        height: 1.2,
+                        fontSize: _fanDetailSize,
+                        height: _fanDetailHeight,
                       ),
                     ),
                   if (pass.favourite)
@@ -960,13 +1120,36 @@ class _Metrics {
     required this.stepY,
     required this.ax,
     required this.ay,
+    this.fit = 1,
+    this.uniform = false,
   });
 
   final double stepX;
   final double stepY;
   final double ax;
   final double ay;
+
+  /// Scale applied when a full-size fan would push the names off the stage.
+  final double fit;
+
+  /// Every card uses [fit] so a long fan can keep both text lines visible.
+  final bool uniform;
 }
+
+const _fanPadTop = 8.0;
+const _fanNameSize = 16.0;
+const _fanNameHeight = 1.15;
+const _fanDetailSize = 13.0;
+const _fanDetailHeight = 1.2;
+
+/// Top padding plus the name line and the category line, in card pixels.
+const _fanHeader =
+    _fanPadTop +
+    _fanNameSize * _fanNameHeight +
+    _fanDetailSize * _fanDetailHeight;
+
+/// Extra pixels so the next card does not sit on the category.
+const _fanHeaderSlack = 3.0;
 
 _Deck _layout({
   required double stageW,
@@ -989,10 +1172,13 @@ _Deck _layout({
   final walletW = phone
       ? math.min(230.0, viewportW * 0.62)
       : math.min(460.0, viewportW * 0.42);
-  final base = phone
-      ? const _Metrics(stepX: 0, stepY: 30, ax: 0.5, ay: 0.46)
-      : const _Metrics(stepX: 0, stepY: 50, ax: 0.5, ay: 0.31);
-  final m = _fitVertical(base, count, stageH, floor, cardH);
+  final m = _fitVertical(
+    ax: 0.5,
+    n: count,
+    stageH: stageH,
+    floor: floor,
+    cardH: cardH,
+  );
   final focus = math.max(0.0, (count - 1) * 0.46);
   final lipCy = walletTop + seam + 9;
   final pocketX = stageW / 2 - stageW * m.ax;
@@ -1002,7 +1188,7 @@ _Deck _layout({
     final t = i - focus;
     var x = t * m.stepX;
     var y = t * m.stepY;
-    var scale = (1 + t * 0.012).clamp(0.8, 1.08).toDouble();
+    var scale = _placedScale(i, count, m);
     if (intro < 1) {
       final fromFront = count - 1 - i;
       final gaps = math.max(1, count - 1);
@@ -1041,35 +1227,91 @@ _Deck _layout({
   );
 }
 
-_Metrics _fitVertical(
-  _Metrics m,
-  int n,
-  double stageH,
-  double floor,
-  double cardH,
-) {
-  if (n < 1 || cardH < 1 || stageH < 1) return m;
+double _depthScale(int index, int count) {
+  if (count <= 1) return 1;
+  final focus = (count - 1) * 0.46;
+  final t = index - focus;
+  return (1 + t * 0.012).clamp(0.8, 1.08).toDouble();
+}
+
+double _placedScale(int index, int count, _Metrics m) {
+  if (count <= 1) return 1;
+  if (m.uniform) return m.fit;
+  return _depthScale(index, count) * m.fit;
+}
+
+_Metrics _fitVertical({
+  required double ax,
+  required int n,
+  required double stageH,
+  required double floor,
+  required double cardH,
+}) {
+  const fallback = _Metrics(stepX: 0, stepY: 48, ax: 0.5, ay: 0.46);
+  if (n < 1 || cardH < 1 || stageH < 1) return fallback;
+  const margin = 16.0;
+  final room = stageH - margin - floor;
   final focus = math.max(0.0, (n - 1) * 0.46);
-  double hhAt(int i) {
-    final t = i - focus;
-    final scale = (1 + t * 0.012).clamp(0.8, 1.08).toDouble();
-    return cardH * scale * 0.5;
+
+  double scaleOf(int i, double fit, bool uniform) {
+    if (n <= 1) return 1;
+    if (uniform) return fit;
+    return _depthScale(i, n) * fit;
   }
 
-  final span = n - 1;
-  const margin = 16.0;
-  final room = stageH - margin - floor - hhAt(0) - hhAt(n - 1);
-  var step = m.stepY;
-  if (span > 0) {
-    step = room <= 8 ? math.min(step, 10) : math.min(step, room / span);
+  double stepFor(double fit, bool uniform) {
+    if (n <= 1) return 0;
+    var step = 0.0;
+    for (var i = 0; i < n - 1; i++) {
+      final s0 = scaleOf(i, fit, uniform);
+      final s1 = scaleOf(i + 1, fit, uniform);
+      final need =
+          _fanHeader * s0 + (cardH / 2) * (s1 - s0) + _fanHeaderSlack * s0;
+      if (need > step) step = need;
+    }
+    return step;
   }
-  if (step < 0) step = 0;
+
+  double stackHeight(double step, double fit, bool uniform) {
+    final s0 = scaleOf(0, fit, uniform);
+    final last = scaleOf(n - 1, fit, uniform);
+    final hh0 = cardH * s0 / 2;
+    final hhLast = cardH * last / 2;
+    if (n <= 1) return _fanHeader * s0;
+    return hh0 + (n - 1) * step - hhLast + _fanHeader * last;
+  }
+
+  var uniform = false;
+  var fit = 1.0;
+  var step = stepFor(fit, uniform);
+  if (n > 1 && room <= 8) {
+    step = math.min(step, 10);
+  } else if (n > 1 && stackHeight(step, fit, uniform) > room) {
+    // The gradient fan cannot show both lines without leaving the stage.
+    // One shared scale keeps the name and category on every card.
+    uniform = true;
+    final unitStep = stepFor(1, true);
+    final unitStack = stackHeight(unitStep, 1, true);
+    fit = unitStack <= 0 ? 1 : (room / unitStack).clamp(0.62, 1.0).toDouble();
+    step = stepFor(fit, true);
+  }
+  if (step < 0 || !step.isFinite) step = 0;
+
+  double hhAt(int i) => cardH * scaleOf(i, fit, uniform) * 0.5;
   var ay = (floor + hhAt(0) - (0 - focus) * step) / stageH;
+  if (!ay.isFinite) ay = 0.46;
   for (var i = 1; i < n; i++) {
     final top = stageH * ay + (i - focus) * step - hhAt(i);
     if (top < floor) ay += (floor - top) / stageH;
   }
-  return _Metrics(stepX: m.stepX, stepY: step, ax: m.ax, ay: ay);
+  return _Metrics(
+    stepX: 0,
+    stepY: step,
+    ax: ax,
+    ay: ay,
+    fit: fit,
+    uniform: uniform,
+  );
 }
 
 double _ease(double u) {

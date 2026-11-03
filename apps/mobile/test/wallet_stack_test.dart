@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:softxu/features/wallet/card_fields.dart';
 import 'package:softxu/features/wallet/test_cards.dart';
@@ -53,17 +54,26 @@ void main() {
       tester.getTopLeft(find.text('Studio')).dy,
       greaterThan(tester.getTopLeft(find.text('Ada')).dy),
     );
+    _expectCategoryClearOfNextCard(tester, 'Studio', 0);
     expect(find.text('Close wallet'), findsOneWidget);
 
+    final graceCard = find.byKey(const ValueKey('wallet-pass-1'));
+    final beforeCard = tester.getRect(graceCard);
+    final beforeText = tester.getTopLeft(find.text('Grace')).dy;
     final resting = tester.getCenter(find.text('Grace'));
     final pointer = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await pointer.addPointer(location: resting);
     await pointer.moveTo(resting);
     await tester.pumpAndSettle();
+    final afterCard = tester.getRect(graceCard);
+    final afterText = tester.getTopLeft(find.text('Grace')).dy;
+    expect((afterCard.top - beforeCard.top).abs(), lessThan(12));
     expect(
-      resting.dy - tester.getCenter(find.text('Grace')).dy,
-      greaterThan(80),
+      afterCard.height,
+      closeTo(beforeCard.height * 1.5, beforeCard.height * 0.12),
     );
+    expect((afterText - beforeText).abs(), lessThan(40));
+    expect(afterText, lessThan(afterCard.top + 56));
     await pointer.removePointer();
     await tester.pumpAndSettle();
 
@@ -239,18 +249,91 @@ void main() {
       tester.getTopLeft(find.text('Studio lead')).dy,
       greaterThan(tester.getTopLeft(find.text('Meera Iyer')).dy),
     );
+    final fanStep = _paintedCard(tester, 1).top - _paintedCard(tester, 0).top;
+    // ignore: avoid_print
+    print('PHONE_FAN_STEP $fanStep');
+    for (var i = 0; i < testCards.length - 1; i++) {
+      _expectCategoryClearOfNextCard(tester, testCards[i].category, i);
+    }
+    final lastDetail = tester.getRect(find.text(testCards.last.category));
+    expect(lastDetail.top, greaterThanOrEqualTo(0));
+    expect(lastDetail.bottom, lessThanOrEqualTo(844));
 
+    final meeraCard = find.byKey(const ValueKey('wallet-pass-0'));
+    final beforeCard = tester.getRect(meeraCard);
+    final beforeText = tester.getTopLeft(find.text('Meera Iyer')).dy;
     final resting = tester.getCenter(find.text('Meera Iyer'));
     final pointer = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await pointer.addPointer(location: resting);
     await pointer.moveTo(resting);
     await tester.pumpAndSettle();
+    final afterCard = tester.getRect(meeraCard);
+    final afterText = tester.getTopLeft(find.text('Meera Iyer')).dy;
+    expect((afterCard.top - beforeCard.top).abs(), lessThan(12));
     expect(
-      resting.dy - tester.getCenter(find.text('Meera Iyer')).dy,
-      greaterThan(80),
+      afterCard.height,
+      closeTo(beforeCard.height * 1.5, beforeCard.height * 0.12),
     );
+    expect((afterText - beforeText).abs(), lessThan(48));
+    expect(afterText, lessThan(afterCard.top + 56));
     await pointer.removePointer();
+    await tester.pumpAndSettle();
     expect(find.text('Close wallet'), findsOneWidget);
+  });
+
+  testWidgets('a vertical scroll or drag shifts the open fan', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    var added = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CardsStage(
+            onAdd: () => added = true,
+            onScan: _noop,
+            onDesign: _noop,
+            passes: const [
+              WalletPass(label: 'Ada', detail: 'Studio'),
+              WalletPass(label: 'Grace', detail: 'Design'),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open wallet'));
+    await tester.pumpAndSettle();
+
+    final card = find.byKey(const ValueKey('wallet-pass-0'));
+    final before = tester.getCenter(card);
+    await tester.sendEventToBinding(
+      PointerScrollEvent(
+        position: tester.getCenter(find.byType(CardsStage)),
+        scrollDelta: const Offset(0, 140),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final scrolled = tester.getCenter(card);
+    expect(scrolled.dy, greaterThan(before.dy + 40));
+
+    final gesture = await tester.startGesture(scrolled);
+    await gesture.moveBy(const Offset(0, -110));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(tester.getCenter(card).dy, lessThan(scrolled.dy - 30));
+
+    await tester.tap(find.text('Add+'));
+    await tester.pump();
+    expect(added, isTrue);
+    await tester.tap(find.text('Scan'));
+    await tester.tap(find.widgetWithText(InkWell, 'Design'));
+    await tester.tap(find.text('Close wallet'));
+    await tester.pumpAndSettle();
+    expect(find.text('Open wallet'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('account actions stay behind the side menu', (tester) async {
@@ -318,4 +401,36 @@ void _noop() {}
 
 Finder _inOpen(Finder open, Finder matching) {
   return find.descendant(of: open, matching: matching, skipOffstage: false);
+}
+
+/// The category line sits above the next card, so both it and the name show.
+void _expectCategoryClearOfNextCard(
+  WidgetTester tester,
+  String category,
+  int index,
+) {
+  final text = tester.getRect(find.text(category));
+  final card = _paintedCard(tester, index);
+  final next = _paintedCard(tester, index + 1);
+  final stageBottom =
+      tester.view.physicalSize.height / tester.view.devicePixelRatio;
+  expect(next.overlaps(text), isFalse, reason: category);
+  expect(text.bottom, lessThanOrEqualTo(next.top + 0.5), reason: category);
+  expect(
+    next.top,
+    greaterThanOrEqualTo(card.top + (text.bottom - card.top) - 0.5),
+  );
+  expect(text.top, greaterThanOrEqualTo(0), reason: category);
+  expect(text.bottom, lessThanOrEqualTo(stageBottom + 0.5), reason: category);
+}
+
+Rect _paintedCard(WidgetTester tester, int index) {
+  final card = find.byKey(ValueKey('wallet-pass-$index'));
+  final transform = find.descendant(of: card, matching: find.byType(Transform));
+  final render = tester.renderObject<RenderTransform>(transform);
+  final child = render.child!;
+  return MatrixUtils.transformRect(
+    child.getTransformTo(null),
+    Offset.zero & child.size,
+  );
 }
