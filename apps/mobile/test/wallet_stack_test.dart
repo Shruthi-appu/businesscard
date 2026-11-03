@@ -46,10 +46,10 @@ void main() {
     final graceBox = tester.getRect(
       find.byKey(const ValueKey('wallet-pass-1')),
     );
-    expect(graceBox.top, lessThan(adaBox.top - 8));
-    expect(graceBox.left, greaterThan(adaBox.left + 8));
-    expect(adaBox.width, greaterThan(graceBox.width + 4));
-    expect(adaBox.height, greaterThan(graceBox.height + 2));
+    expect((graceBox.left - adaBox.left).abs(), lessThan(2));
+    expect(graceBox.top, greaterThan(adaBox.bottom - 1));
+    expect((adaBox.width - graceBox.width).abs(), lessThan(2));
+    expect((adaBox.height - graceBox.height).abs(), lessThan(2));
     expect(adaBox.width / adaBox.height, closeTo(2.05, 0.08));
     expect(adaBox.left, greaterThanOrEqualTo(12));
     expect(graceBox.right, lessThanOrEqualTo(390));
@@ -81,9 +81,8 @@ void main() {
       find.byKey(const ValueKey('wallet-pass-1')),
     );
     final adaBack = tester.getRect(find.byKey(const ValueKey('wallet-pass-0')));
-    expect(graceFront.width, greaterThan(adaBack.width));
-    expect(adaBack.top, lessThan(graceFront.top));
-    expect(adaBack.left, greaterThan(graceFront.left));
+    expect((graceFront.left - adaBack.left).abs(), lessThan(2));
+    expect(adaBack.top, greaterThan(graceFront.bottom - 1));
 
     await tester.tap(find.text('Grace'));
     await tester.pumpAndSettle();
@@ -211,9 +210,9 @@ void main() {
 
     expect(
       tester.getCenter(find.text('Jonah Brooks')).dy,
-      lessThan(tester.getCenter(find.text('Meera Iyer')).dy - 8),
+      greaterThan(tester.getCenter(find.text('Meera Iyer')).dy + 8),
     );
-    _expectLayeredPile(tester, const [0, 1, 2, 3]);
+    _expectVerticalColumn(tester, const [0, 1, 2, 3]);
     final meera = tester.getRect(find.byKey(const ValueKey('wallet-pass-0')));
     expect(
       tester.getTopLeft(find.text('Meera Iyer')).dy,
@@ -267,7 +266,8 @@ void main() {
     final next = find.byKey(const ValueKey('wallet-pass-1'));
     final beforeFront = tester.getRect(front);
     final beforeNext = tester.getRect(next);
-    expect(beforeFront.width, greaterThan(beforeNext.width));
+    expect((beforeFront.left - beforeNext.left).abs(), lessThan(2));
+    expect(beforeNext.top, greaterThan(beforeFront.bottom - 1));
     await tester.fling(
       find.byKey(const ValueKey('stacked-card-wallet')),
       const Offset(-240, 0),
@@ -276,10 +276,9 @@ void main() {
     await tester.pumpAndSettle();
     final afterFront = tester.getRect(front);
     final afterNext = tester.getRect(next);
-    expect(afterNext.width, greaterThan(afterFront.width));
-    expect(afterNext.top, greaterThan(afterFront.top + 8));
-    expect(afterFront.left, greaterThan(afterNext.left + 8));
-    expect(afterNext.height, closeTo(beforeFront.height, 12));
+    expect((afterNext.left - afterFront.left).abs(), lessThan(2));
+    expect(afterFront.top, greaterThan(afterNext.bottom - 1));
+    expect(afterNext.height, closeTo(beforeFront.height, 2));
     expect(find.byKey(const ValueKey('open-card')), findsNothing);
 
     final gesture = await tester.startGesture(afterNext.center);
@@ -287,10 +286,7 @@ void main() {
     await tester.pump();
     await gesture.up();
     await tester.pumpAndSettle();
-    expect(
-      tester.getRect(next).width,
-      greaterThan(tester.getRect(front).width),
-    );
+    expect(tester.getRect(next).top, lessThan(tester.getRect(front).top));
 
     await tester.tap(find.text('Add+'));
     await tester.pump();
@@ -401,25 +397,17 @@ void _expectHeaderRow(WidgetTester tester) {
   expect(design.bottom - add.top, lessThan(add.height + 4));
 }
 
-/// Front card is largest and lowest. Each card behind is higher, further
-/// right, and the gaps shrink.
-void _expectLayeredPile(WidgetTester tester, List<int> indexes) {
+/// Cards share one left edge. Each card sits under the one above it.
+void _expectVerticalColumn(WidgetTester tester, List<int> indexes) {
   final rects = [
     for (final index in indexes)
       tester.getRect(find.byKey(ValueKey('wallet-pass-$index'))),
   ];
   final stage = tester.getSize(find.byType(CardsStage));
   for (var i = 0; i < rects.length - 1; i++) {
-    expect(rects[i + 1].top, lessThan(rects[i].top - 6));
-    expect(rects[i + 1].left, greaterThan(rects[i].left + 6));
-    expect(rects[i].width, greaterThan(rects[i + 1].width + 2));
-  }
-  if (rects.length >= 4) {
-    final firstGap = rects[1].left - rects[0].left;
-    final secondGap = rects[2].left - rects[1].left;
-    final thirdGap = rects[3].left - rects[2].left;
-    expect(firstGap, greaterThan(secondGap + 2));
-    expect(secondGap, greaterThan(thirdGap + 2));
+    expect((rects[i + 1].left - rects[i].left).abs(), lessThan(2));
+    expect((rects[i + 1].width - rects[i].width).abs(), lessThan(2));
+    expect(rects[i + 1].top, greaterThan(rects[i].bottom - 1));
   }
   for (final rect in rects) {
     expect(rect.left, greaterThanOrEqualTo(-1));

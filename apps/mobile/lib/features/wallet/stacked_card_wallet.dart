@@ -83,12 +83,12 @@ class StackedCardFrame {
   final Rect rect;
 }
 
-/// Positions [count] landscape cards in a pile.
+/// Positions [count] landscape cards in a vertical column.
 ///
-/// The front card is the largest and sits lowest and furthest left. Each
-/// card behind it is smaller, higher, and further right. The steps shrink
-/// toward the back, so the gaps are not equal. Cards past the fourth share
-/// the last step and stay inside [width] and [height].
+/// Every card shares the same left edge and the same size. The front card
+/// is on top. Each following card sits directly under the one above it.
+/// Cards past the fourth share the last row and stay inside [width] and
+/// [height].
 List<StackedCardFrame> layoutStackedCards({
   required int count,
   required int frontIndex,
@@ -99,52 +99,42 @@ List<StackedCardFrame> layoutStackedCards({
   if (count <= 0 || width <= 0 || height <= 0) return const [];
   const margin = 18.0;
   const bottomMargin = 20.0;
-  const maxDxFrac = 0.40;
-  const maxDyFrac = 0.90;
-  const scaleDrop = 0.14;
-  final last = math.min(count - 1, stackedVisibleDepths - 1);
-  final tLast = _depthT(last);
-  final scaleLast = 1 - tLast * scaleDrop;
-  final clusterWFactor = tLast * maxDxFrac + scaleLast;
-  final clusterHFactor = tLast * maxDyFrac + 1;
+  const gap = 12.0;
+  final visible = math.min(count, stackedVisibleDepths);
   final availableW = math.max(1.0, width - margin * 2);
   final availableH = math.max(1.0, height - topInset - bottomMargin);
-  var cardW = availableW / math.max(0.01, clusterWFactor);
+  final gaps = math.max(0, visible - 1) * gap;
+  var cardW = availableW;
   var cardH = cardW / stackedCardAspect;
-  if (cardH * clusterHFactor > availableH) {
-    cardH = availableH / clusterHFactor;
+  if (cardH * visible + gaps > availableH) {
+    cardH = math.max(1.0, (availableH - gaps) / visible);
     cardW = cardH * stackedCardAspect;
+    if (cardW > availableW) {
+      cardW = availableW;
+      cardH = cardW / stackedCardAspect;
+    }
   }
-  final clusterW = cardW * clusterWFactor;
-  final clusterH = cardH * clusterHFactor;
-  final originX = (width - clusterW) / 2;
-  final clusterTop = topInset + (availableH - clusterH) * 0.18;
-  final frontTop = clusterTop + cardH * tLast * maxDyFrac;
+  final stackH = cardH * visible + gaps;
+  final originX = (width - cardW) / 2;
+  final originY = topInset + math.max(0.0, availableH - stackH) * 0.04;
   final front = frontIndex.clamp(0, count - 1);
-  return [
-    for (var index = 0; index < count; index++)
-      () {
-        final depth = (index - front + count) % count;
-        final shown = math.min(depth, last);
-        final t = _depthT(shown);
-        final scale = 1 - t * scaleDrop;
-        final rect = Rect.fromLTWH(
-          originX + t * maxDxFrac * cardW,
-          frontTop - t * maxDyFrac * cardH,
-          cardW * scale,
-          cardH * scale,
-        );
-        return StackedCardFrame(depth: depth, rect: rect);
-      }(),
-  ];
-}
-
-/// 0 at the front, 1 at the furthest visible step. The curve is steeper
-/// near the front, so successive gaps get smaller.
-double _depthT(int shown) {
-  if (shown <= 0 || stackedVisibleDepths <= 1) return 0;
-  final u = shown / (stackedVisibleDepths - 1);
-  return 1 - math.pow(1 - u, 1.35).toDouble();
+  final frames = <StackedCardFrame>[];
+  for (var index = 0; index < count; index++) {
+    final depth = (index - front + count) % count;
+    final row = math.min(depth, visible - 1);
+    frames.add(
+      StackedCardFrame(
+        depth: depth,
+        rect: Rect.fromLTWH(
+          originX,
+          originY + row * (cardH + gap),
+          cardW,
+          cardH,
+        ),
+      ),
+    );
+  }
+  return frames;
 }
 
 double _ease(double u) {
@@ -152,9 +142,9 @@ double _ease(double u) {
   return 1 - math.pow(1 - t, 3).toDouble();
 }
 
-/// Layered horizontal cards. A tap on a card behind the front brings that
-/// card forward. A horizontal swipe moves to the next or previous card.
-/// A tap on the front card calls [onOpen].
+/// Landscape cards in a vertical column. A tap on a lower card brings that
+/// card to the top. A horizontal swipe moves to the next or previous card.
+/// A tap on the top card calls [onOpen].
 class StackedBusinessCardWallet extends StatefulWidget {
   const StackedBusinessCardWallet({
     super.key,

@@ -4,7 +4,7 @@ import 'package:softxu/features/wallet/business_card.dart';
 import 'package:softxu/features/wallet/stacked_card_wallet.dart';
 
 void main() {
-  testWidgets('tap, swipe, add, and remove keep the layered pile', (
+  testWidgets('tap, swipe, add, and remove keep the vertical column', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;
@@ -23,19 +23,14 @@ void main() {
     final meera = tester.getRect(find.byKey(const ValueKey('card-meera')));
     final rohan = tester.getRect(find.byKey(const ValueKey('card-rohan')));
     final ananya = tester.getRect(find.byKey(const ValueKey('card-ananya')));
-    expect(meera.top, lessThan(front.top - 8));
-    expect(rohan.top, lessThan(meera.top - 6));
-    expect(ananya.top, lessThan(rohan.top - 4));
-    expect(meera.left, greaterThan(front.left + 8));
-    expect(rohan.left, greaterThan(meera.left + 4));
-    expect(ananya.left, greaterThan(rohan.left + 2));
-    expect(front.width, greaterThan(meera.width));
-    expect(meera.width, greaterThan(rohan.width));
-    final firstGap = meera.left - front.left;
-    final secondGap = rohan.left - meera.left;
-    final thirdGap = ananya.left - rohan.left;
-    expect(firstGap, greaterThan(secondGap + 2));
-    expect(secondGap, greaterThan(thirdGap + 2));
+    expect((meera.left - front.left).abs(), lessThan(2));
+    expect((rohan.left - front.left).abs(), lessThan(2));
+    expect((ananya.left - front.left).abs(), lessThan(2));
+    expect(meera.top, greaterThan(front.bottom - 1));
+    expect(rohan.top, greaterThan(meera.bottom - 1));
+    expect(ananya.top, greaterThan(rohan.bottom - 1));
+    expect((front.width - meera.width).abs(), lessThan(2));
+    expect((meera.width - rohan.width).abs(), lessThan(2));
     expect(ananya.right, lessThanOrEqualTo(390));
     expect(ananya.top, greaterThanOrEqualTo(0));
     expect(front.bottom, lessThanOrEqualTo(844));
@@ -49,12 +44,10 @@ void main() {
     await tester.tap(find.text('Meera Iyer'));
     await tester.pumpAndSettle();
     expect(opened, isEmpty);
-    expect(
-      tester.getRect(find.byKey(const ValueKey('card-meera'))).width,
-      greaterThan(
-        tester.getRect(find.byKey(const ValueKey('card-arjun'))).width,
-      ),
-    );
+    final meeraFront = tester.getRect(find.byKey(const ValueKey('card-meera')));
+    final arjunBack = tester.getRect(find.byKey(const ValueKey('card-arjun')));
+    expect((meeraFront.left - arjunBack.left).abs(), lessThan(2));
+    expect(arjunBack.top, greaterThan(meeraFront.bottom - 1));
 
     await tester.tap(find.text('Meera Iyer'));
     await tester.pumpAndSettle();
@@ -66,12 +59,10 @@ void main() {
       900,
     );
     await tester.pumpAndSettle();
-    expect(
-      tester.getRect(find.byKey(const ValueKey('card-rohan'))).width,
-      greaterThan(
-        tester.getRect(find.byKey(const ValueKey('card-meera'))).width,
-      ),
-    );
+    final rohanFront = tester.getRect(find.byKey(const ValueKey('card-rohan')));
+    final meeraBelow = tester.getRect(find.byKey(const ValueKey('card-meera')));
+    expect((rohanFront.left - meeraBelow.left).abs(), lessThan(2));
+    expect(meeraBelow.top, greaterThan(rohanFront.bottom - 1));
 
     cards = [
       ...cards,
@@ -88,8 +79,8 @@ void main() {
     await tester.pumpAndSettle();
     final kabir = tester.getRect(find.byKey(const ValueKey('card-kabir')));
     final rohanNow = tester.getRect(find.byKey(const ValueKey('card-rohan')));
-    expect(kabir.top, lessThan(rohanNow.top));
-    expect(kabir.left, greaterThan(rohanNow.left));
+    expect((kabir.left - rohanNow.left).abs(), lessThan(2));
+    expect(kabir.top, greaterThan(rohanNow.bottom - 1));
     expect(kabir.right, lessThanOrEqualTo(390));
 
     cards = [
@@ -103,9 +94,8 @@ void main() {
     expect(find.text('Rohan Desai'), findsNothing);
     final nextFront = tester.getRect(find.byKey(const ValueKey('card-arjun')));
     final behind = tester.getRect(find.byKey(const ValueKey('card-meera')));
-    expect(nextFront.width, greaterThan(behind.width));
-    expect(behind.top, lessThan(nextFront.top));
-    expect(behind.left, greaterThan(nextFront.left));
+    expect((nextFront.left - behind.left).abs(), lessThan(2));
+    expect(behind.top, greaterThan(nextFront.bottom - 1));
   });
 
   testWidgets('the pile fits a narrow phone and a wide phone', (tester) async {

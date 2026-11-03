@@ -84,10 +84,10 @@ class WalletPass {
 /// The exported Cards stage.
 ///
 /// Cards wait in the wallet. Open wallet deals them over 2300ms into a
-/// layered pile of horizontal cards. The front card is largest. Each card
-/// behind it sits higher and further right, with smaller steps toward the
-/// back. A tap on a back card brings it forward. A horizontal swipe moves
-/// through the pile. A tap on the front card opens its detail page.
+/// vertical column of landscape cards. The cards share one left edge, and
+/// each card sits under the one above it. A tap on a lower card brings it
+/// to the top. A horizontal swipe moves through the column. A tap on the
+/// top card opens its detail page.
 class CardsStage extends StatefulWidget {
   const CardsStage({
     super.key,
