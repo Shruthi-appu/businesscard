@@ -20,8 +20,8 @@ void main() {
             onScan: _noop,
             onDesign: _noop,
             passes: [
-              WalletPass(label: 'Ada'),
-              WalletPass(label: 'Grace'),
+              WalletPass(label: 'Ada', detail: 'Studio'),
+              WalletPass(label: 'Grace', detail: 'Design'),
             ],
           ),
         ),
@@ -43,10 +43,15 @@ void main() {
 
     final ada = tester.getCenter(find.text('Ada'));
     final grace = tester.getCenter(find.text('Grace'));
-    final card = tester.getSize(find.byKey(const ValueKey('wallet-pass-0')));
+    final cardBox = tester.getRect(find.byKey(const ValueKey('wallet-pass-0')));
     expect(grace.dy, greaterThan(ada.dy + 12));
-    expect(card.width, closeTo(200, 1));
-    expect(card.height / card.width, closeTo(1.7, 0.02));
+    expect(cardBox.width, closeTo(200, 1));
+    expect(cardBox.height / cardBox.width, closeTo(1.7, 0.02));
+    expect(tester.getTopLeft(find.text('Ada')).dy, lessThan(cardBox.top + 48));
+    expect(
+      tester.getTopLeft(find.text('Studio')).dy,
+      greaterThan(tester.getTopLeft(find.text('Ada')).dy),
+    );
     expect(find.text('Close wallet'), findsOneWidget);
 
     final resting = tester.getCenter(find.text('Grace'));
@@ -103,6 +108,26 @@ void main() {
       tester.getCenter(find.text('Jonah Brooks')).dy,
       greaterThan(tester.getCenter(find.text('Meera Iyer')).dy + 12),
     );
+    final meera = tester.getRect(find.byKey(const ValueKey('wallet-pass-0')));
+    expect(
+      tester.getTopLeft(find.text('Meera Iyer')).dy,
+      lessThan(meera.top + 48),
+    );
+    expect(
+      tester.getTopLeft(find.text('Studio lead')).dy,
+      greaterThan(tester.getTopLeft(find.text('Meera Iyer')).dy),
+    );
+
+    final resting = tester.getCenter(find.text('Meera Iyer'));
+    final pointer = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await pointer.addPointer(location: resting);
+    await pointer.moveTo(resting);
+    await tester.pumpAndSettle();
+    expect(
+      resting.dy - tester.getCenter(find.text('Meera Iyer')).dy,
+      greaterThan(80),
+    );
+    await pointer.removePointer();
     expect(find.text('Close wallet'), findsOneWidget);
   });
 }

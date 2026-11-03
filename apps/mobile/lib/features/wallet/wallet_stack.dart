@@ -101,16 +101,45 @@ class _CardsStageState extends State<CardsStage>
     _deal.reverse();
   }
 
-  List<_Placed> _paintOrder(List<_Placed> cards) {
-    final hover = _hover;
-    if (hover == null) return cards;
-    final ordered = [...cards];
-    ordered.sort((a, b) {
-      if (a.index == hover) return 1;
-      if (b.index == hover) return -1;
-      return a.index.compareTo(b.index);
-    });
-    return ordered;
+  Rect _strip(_Placed placed, _Deck deck) {
+    final box = Rect.fromCenter(
+      center: Offset(placed.cx, placed.cy),
+      width: placed.width,
+      height: placed.height,
+    );
+    final top = placed.cy - placed.height * placed.scale / 2;
+    final full = placed.height * placed.scale;
+    var height = full;
+    if (placed.index + 1 < deck.cards.length) {
+      final next = deck.cards[placed.index + 1];
+      final nextTop = next.cy - next.height * next.scale / 2;
+      height = (nextTop - top).clamp(1.0, full);
+    }
+    final visual = Rect.fromLTWH(
+      placed.cx - placed.width * placed.scale / 2,
+      top,
+      placed.width * placed.scale,
+      height,
+    );
+    final hit = visual.intersect(box);
+    if (hit.isEmpty) {
+      return Rect.fromLTWH(
+        box.left,
+        box.top,
+        box.width,
+        math.min(36, box.height),
+      );
+    }
+    return hit;
+  }
+
+  int? _indexAt(Offset local, _Deck deck) {
+    for (var i = deck.cards.length - 1; i >= 0; i--) {
+      if (_strip(deck.cards[i], deck).contains(local)) {
+        return deck.cards[i].index;
+      }
+    }
+    return null;
   }
 
   @override
@@ -143,148 +172,162 @@ class _CardsStageState extends State<CardsStage>
             .toDouble();
         final showWallet = _intro < 1;
 
-        return ColoredBox(
-          color: const Color(0xFFFFFFFF),
-          child: ClipRect(
-            child: Stack(
-              children: [
-                if (showWallet) _walletBack(deck, stageW, stageH),
-                for (final placed in _paintOrder(deck.cards))
+        return MouseRegion(
+          onHover: (event) => _trackHover(event.localPosition, deck),
+          onExit: (_) {
+            if (_hover != null) setState(() => _hover = null);
+          },
+          child: ColoredBox(
+            color: const Color(0xFFFFFFFF),
+            child: ClipRect(
+              child: Stack(
+                children: [
+                  if (showWallet) _walletBack(deck, stageW, stageH),
+                  for (final placed in deck.cards)
+                    if (placed.index != _hover) _card(placed, deck),
+                  if (showWallet) _walletFront(deck, stageW, stageH),
                   Positioned(
-                    left: placed.cx - placed.width / 2,
-                    top: placed.cy - placed.height / 2,
-                    width: placed.width,
-                    height: placed.height,
+                    top: deck.wordmarkTop,
+                    left: 0,
+                    right: 0,
                     child: IgnorePointer(
-                      ignoring: _intro < 1 || _opened != null,
-                      child: MouseRegion(
-                        onEnter: (_) => setState(() => _hover = placed.index),
-                        onExit: (_) => setState(() {
-                          if (_hover == placed.index) _hover = null;
-                        }),
-                        child: Transform.scale(
-                          scale: placed.scale,
-                          child: _Lift(
-                            lifted: _hover == placed.index,
-                            child: _FanCard(
-                              key: ValueKey('wallet-pass-${placed.index}'),
-                              pass: widget.passes[placed.index],
-                              palette:
-                                  _palettes[placed.index % _palettes.length],
-                              showBack: placed.index.isOdd,
-                              onTap: () =>
-                                  setState(() => _opened = placed.index),
-                            ),
-                          ),
+                      child: Text(
+                        'IncardIt',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Georgia',
+                          fontSize: deck.wordmarkSize,
+                          height: 0.86,
+                          letterSpacing: deck.wordmarkSize * -0.04,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF0F0F0F),
                         ),
                       ),
                     ),
                   ),
-                if (showWallet) _walletFront(deck, stageW, stageH),
-                Positioned(
-                  top: deck.wordmarkTop,
-                  left: 0,
-                  right: 0,
-                  child: IgnorePointer(
-                    child: Text(
-                      'IncardIt',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: 'Georgia',
-                        fontSize: deck.wordmarkSize,
-                        height: 0.86,
-                        letterSpacing: deck.wordmarkSize * -0.04,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF0F0F0F),
+                  if (widget.fromCache || widget.notice != null)
+                    Positioned(
+                      top: deck.wordmarkTop + deck.wordmarkSize,
+                      left: 24,
+                      right: 24,
+                      child: Text(
+                        widget.fromCache
+                            ? 'Saved on this device. These cards may be out of date.'
+                            : widget.notice!,
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                  ),
-                ),
-                if (widget.fromCache || widget.notice != null)
                   Positioned(
-                    top: deck.wordmarkTop + deck.wordmarkSize,
-                    left: 24,
-                    right: 24,
-                    child: Text(
-                      widget.fromCache
-                          ? 'Saved on this device. These cards may be out of date.'
-                          : widget.notice!,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                Positioned(
-                  left: insetX,
-                  top: navTop,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _Pill(
-                        label: 'Add+',
-                        height: btnH,
-                        scale: navScale,
-                        onPressed: widget.onAdd,
-                      ),
-                      SizedBox(height: gap),
-                      _Pill(
-                        label: 'Scan',
-                        height: btnH,
-                        scale: navScale,
-                        onPressed: widget.onScan,
-                      ),
-                      SizedBox(height: gap),
-                      _Pill(
-                        label: 'Design',
-                        height: btnH,
-                        scale: navScale,
-                        onPressed: widget.onDesign,
-                      ),
-                      if (widget.account != null) ...[
-                        const SizedBox(height: 12),
-                        SizedBox(width: 210, child: widget.account),
+                    left: insetX,
+                    top: navTop,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _Pill(
+                          label: 'Add+',
+                          height: btnH,
+                          scale: navScale,
+                          onPressed: widget.onAdd,
+                        ),
+                        SizedBox(height: gap),
+                        _Pill(
+                          label: 'Scan',
+                          height: btnH,
+                          scale: navScale,
+                          onPressed: widget.onScan,
+                        ),
+                        SizedBox(height: gap),
+                        _Pill(
+                          label: 'Design',
+                          height: btnH,
+                          scale: navScale,
+                          onPressed: widget.onDesign,
+                        ),
+                        if (widget.account != null) ...[
+                          const SizedBox(height: 12),
+                          SizedBox(width: 210, child: widget.account),
+                        ],
                       ],
-                    ],
-                  ),
-                ),
-                if (widget.footer != null)
-                  Positioned(
-                    left: 16,
-                    right: 16,
-                    bottom: 8,
-                    child: widget.footer!,
-                  ),
-                if (_opened != null && _opened! < widget.passes.length)
-                  Positioned.fill(
-                    child: _OpenCard(
-                      pass: widget.passes[_opened!],
-                      palette: _palettes[_opened! % _palettes.length],
-                      showBack: _opened!.isOdd,
-                      onClose: () => setState(() => _opened = null),
                     ),
                   ),
-                Positioned(
-                  right: phone ? 12 : 18,
-                  top: deck.floor + 8,
-                  child: _Pill(
-                    label: label,
-                    height: phone ? 36 : 40,
-                    scale: 1,
-                    onPressed: _deal.isAnimating
-                        ? null
-                        : () {
-                            if (_intro >= 1) {
-                              _close();
-                            } else {
-                              _open();
-                            }
-                          },
+                  if (widget.footer != null)
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 8,
+                      child: widget.footer!,
+                    ),
+                  if (_hover != null && _hover! < deck.cards.length)
+                    _card(deck.cards[_hover!], deck),
+                  if (_opened != null && _opened! < widget.passes.length)
+                    Positioned.fill(
+                      child: _OpenCard(
+                        pass: widget.passes[_opened!],
+                        palette: _palettes[_opened! % _palettes.length],
+                        showBack: _opened!.isOdd,
+                        onClose: () => setState(() => _opened = null),
+                      ),
+                    ),
+                  Positioned(
+                    right: phone ? 12 : 18,
+                    top: deck.floor + 8,
+                    child: _Pill(
+                      label: label,
+                      height: phone ? 36 : 40,
+                      scale: 1,
+                      onPressed: _deal.isAnimating
+                          ? null
+                          : () {
+                              if (_intro >= 1) {
+                                _close();
+                              } else {
+                                _open();
+                              }
+                            },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
       },
     );
+  }
+
+  Widget _card(_Placed placed, _Deck deck) {
+    final boxTop = placed.cy - placed.height / 2;
+    final boxLeft = placed.cx - placed.width / 2;
+    final strip = _strip(placed, deck);
+    return Positioned(
+      left: boxLeft,
+      top: boxTop,
+      width: placed.width,
+      height: placed.height,
+      child: _HoverCard(
+        key: ValueKey('wallet-pass-${placed.index}'),
+        pass: widget.passes[placed.index],
+        palette: _palettes[placed.index % _palettes.length],
+        showBack: placed.index.isOdd,
+        scale: placed.scale,
+        lifted: _hover == placed.index && _opened == null,
+        stripTop: strip.top - boxTop,
+        stripLeft: strip.left - boxLeft,
+        stripWidth: strip.width,
+        stripHeight: strip.height,
+        interactive: _intro >= 1 && _opened == null,
+        onTap: () => setState(() => _opened = placed.index),
+      ),
+    );
+  }
+
+  void _trackHover(Offset local, _Deck deck) {
+    if (_intro < 1 || _opened != null) {
+      if (_hover != null) setState(() => _hover = null);
+      return;
+    }
+    final index = _indexAt(local, deck);
+    if (index != _hover) setState(() => _hover = index);
   }
 
   Widget _walletBack(_Deck deck, double stageW, double stageH) {
@@ -455,6 +498,64 @@ class _Pill extends StatelessWidget {
   }
 }
 
+class _HoverCard extends StatelessWidget {
+  const _HoverCard({
+    super.key,
+    required this.pass,
+    required this.palette,
+    required this.showBack,
+    required this.scale,
+    required this.lifted,
+    required this.stripTop,
+    required this.stripLeft,
+    required this.stripWidth,
+    required this.stripHeight,
+    required this.interactive,
+    required this.onTap,
+  });
+
+  final WalletPass pass;
+  final _Palette palette;
+  final bool showBack;
+  final double scale;
+  final bool lifted;
+  final double stripTop;
+  final double stripLeft;
+  final double stripWidth;
+  final double stripHeight;
+  final bool interactive;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IgnorePointer(
+          child: Transform.scale(
+            scale: scale,
+            child: _Lift(
+              lifted: lifted,
+              child: _FanCard(pass: pass, palette: palette, showBack: showBack),
+            ),
+          ),
+        ),
+        if (interactive && stripWidth > 0 && stripHeight > 0)
+          Positioned(
+            left: stripLeft,
+            top: stripTop,
+            width: stripWidth,
+            height: stripHeight,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onTap,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _Lift extends StatelessWidget {
   const _Lift({required this.lifted, required this.child});
 
@@ -481,17 +582,14 @@ class _Lift extends StatelessWidget {
 
 class _FanCard extends StatelessWidget {
   const _FanCard({
-    super.key,
     required this.pass,
     required this.palette,
     required this.showBack,
-    required this.onTap,
   });
 
   final WalletPass pass;
   final _Palette palette;
   final bool showBack;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -502,47 +600,46 @@ class _FanCard extends StatelessWidget {
         children: [
           CustomPaint(painter: _FacePainter(palette, showBack)),
           Align(
-            alignment: showBack ? Alignment.bottomLeft : Alignment.bottomRight,
-            child: FractionallySizedBox(
-              widthFactor: 0.58,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (pass.label.isNotEmpty)
-                      Text(
-                        pass.label,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: showBack ? palette.light : palette.ink,
-                          fontSize: 14,
-                          height: 1.25,
-                          letterSpacing: 0.56,
-                        ),
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (pass.label.isNotEmpty)
+                    Text(
+                      pass.label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: showBack ? palette.light : palette.ink,
+                        fontSize: 16,
+                        height: 1.15,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
                       ),
-                    if (pass.detail != null && pass.detail!.isNotEmpty)
-                      Text(
-                        pass.detail!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: showBack ? palette.light : palette.ink,
-                          fontSize: 12,
-                        ),
+                    ),
+                  if (pass.detail != null && pass.detail!.isNotEmpty)
+                    Text(
+                      pass.detail!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: showBack ? palette.light : palette.ink,
+                        fontSize: 13,
+                        height: 1.2,
                       ),
-                    if (pass.favourite)
-                      Text(
-                        'Favourite',
-                        style: TextStyle(
-                          color: showBack ? palette.light : palette.ink,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    ),
+                  if (pass.favourite)
+                    Text(
+                      'Favourite',
+                      style: TextStyle(
+                        color: showBack ? palette.light : palette.ink,
+                        fontWeight: FontWeight.w600,
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -560,7 +657,7 @@ class _FanCard extends StatelessWidget {
           ),
         ],
       ),
-      child: GestureDetector(onTap: onTap, child: face),
+      child: face,
     );
   }
 }
