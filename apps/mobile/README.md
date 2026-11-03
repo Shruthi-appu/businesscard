@@ -6,7 +6,7 @@ Flutter app for Android and iPhone. A person can register, sign in, and open the
 
 The Android target is portrait-only, application id `technology.softxu.softxu`. Debug builds allow cleartext HTTP to the API. A release build expects HTTPS. Card links can open the browser, Google Maps, WhatsApp, the phone app, and email. The system back button closes the account menu before it leaves a screen.
 
-Run this from the repository root, the folder that contains `apps`. On a Mac that already has the iPhone simulator open, check out this branch first. `flutter run -d android` installs only after `flutter devices` lists an Android emulator or a phone. The iPhone simulator, macOS, and Chrome do not satisfy that.
+Run this from the repository root, the folder that contains `apps`. Leave the Android emulator window open. `flutter devices` prints its id in the second column, usually `emulator-5554`. Pass that id to `flutter run`. The word `android` is not the device id, so `-d android` does not select the emulator.
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
@@ -15,21 +15,15 @@ git checkout cursor/android-app-1b55
 git pull origin cursor/android-app-1b55
 cd apps/mobile
 flutter pub get
-flutter doctor
-flutter emulators
+flutter devices
+flutter run -d emulator-5554 --dart-define=API_ORIGIN=http://10.0.2.2:3001
 ```
 
-When `flutter emulators` prints an emulator name, start it and wait until `flutter devices` shows an `android` row. Then run:
+`10.0.2.2` is the computer as seen from the emulator. Softxu opens inside the emulator window. A physical phone, with USB debugging on, uses the computer's LAN address and the phone's id from `flutter devices`:
 
 ```bash
-# Emulator. 10.0.2.2 is the computer running the API.
-flutter run -d android --dart-define=API_ORIGIN=http://10.0.2.2:3001
-
-# A physical phone, with USB debugging on. Use the computer's LAN address.
-flutter run -d android --dart-define=API_ORIGIN=http://192.168.1.10:3001
+flutter run -d <phone-id> --dart-define=API_ORIGIN=http://192.168.1.10:3001
 ```
-
-If `flutter emulators` prints nothing, install Android Studio, open Device Manager, and create a phone with an arm64 system image. Start that device, then run the `flutter run` command above. `flutter doctor` names the Android toolchain when it is still missing.
 
 ## iPhone
 
