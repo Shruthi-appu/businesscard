@@ -49,7 +49,10 @@ void main() {
 
     final menu = tester.getRect(find.byKey(const ValueKey('wallet-menu')));
     final signOut = tester.getRect(find.text('Sign out'));
-    final add = tester.getRect(find.text('Add+'));
+    final title = tester.getRect(find.text('IncardIt'));
+    final add = tester.getRect(find.widgetWithText(InkWell, 'Add+'));
+    final scan = tester.getRect(find.widgetWithText(InkWell, 'Scan'));
+    final design = tester.getRect(find.widgetWithText(InkWell, 'Design'));
     final width = tester.view.physicalSize.width / tester.view.devicePixelRatio;
     expect(
       find.descendant(
@@ -61,10 +64,16 @@ void main() {
     expect(menu.left, lessThan(32));
     expect(menu.center.dx, lessThan(width * 0.25));
     expect(menu.right, lessThan(signOut.left));
-    expect(menu.bottom, lessThan(add.top));
     expect(menu.overlaps(add), isFalse);
     expect(menu.width, greaterThanOrEqualTo(44));
     expect(menu.height, greaterThanOrEqualTo(44));
+    expect(title.left, lessThan(add.left));
+    expect(add.left, lessThan(scan.left));
+    expect(scan.left, lessThan(design.left));
+    expect((add.center.dy - title.center.dy).abs(), lessThan(20));
+    expect((scan.center.dy - add.center.dy).abs(), lessThan(4));
+    expect((design.center.dy - scan.center.dy).abs(), lessThan(4));
+    expect((design.top - add.top).abs(), lessThan(4));
 
     await tester.tap(find.byKey(const ValueKey('wallet-menu')));
     await tester.pumpAndSettle();

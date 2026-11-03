@@ -35,10 +35,11 @@ void main() {
     final tuckedGrace = tester.getCenter(find.text('Grace'));
     expect((tuckedAda.dy - tuckedGrace.dy).abs(), lessThan(24));
     expect(find.text('Open wallet'), findsOneWidget);
-    expect(
-      tester.getSize(find.byKey(const ValueKey('wallet-pocket'))).width,
-      closeTo(360, 1),
-    );
+    final pocketWidth = tester
+        .getSize(find.byKey(const ValueKey('wallet-pocket')))
+        .width;
+    expect(pocketWidth, closeTo(366, 1));
+    _expectHeaderRow(tester);
 
     await tester.tap(find.text('Open wallet'));
     await tester.pumpAndSettle();
@@ -47,7 +48,8 @@ void main() {
     final grace = tester.getCenter(find.text('Grace'));
     final cardBox = tester.getRect(find.byKey(const ValueKey('wallet-pass-0')));
     expect(grace.dy, greaterThan(ada.dy + 12));
-    expect(cardBox.width, closeTo(300, 1));
+    expect(cardBox.width, closeTo(362, 1));
+    expect(cardBox.width, lessThanOrEqualTo(pocketWidth + 0.5));
     expect(cardBox.left, greaterThanOrEqualTo(12));
     expect(cardBox.right, lessThanOrEqualTo(378));
     expect(cardBox.height / cardBox.width, closeTo(1.7, 0.02));
@@ -388,7 +390,7 @@ void main() {
     expect(find.text('Delete account'), findsNothing);
 
     final menu = tester.getRect(find.byKey(const ValueKey('wallet-menu')));
-    final add = tester.getRect(find.text('Add+'));
+    final add = tester.getRect(find.widgetWithText(InkWell, 'Add+'));
     expect(
       find.descendant(
         of: find.byType(AppBar),
@@ -399,8 +401,8 @@ void main() {
     expect(menu.center.dx, lessThan(80));
     expect(menu.width, greaterThanOrEqualTo(44));
     expect(menu.height, greaterThanOrEqualTo(44));
-    expect(menu.bottom, lessThan(add.top));
     expect(menu.overlaps(add), isFalse);
+    _expectHeaderRow(tester);
 
     await tester.tap(find.byKey(const ValueKey('wallet-menu')));
     await tester.pumpAndSettle();
@@ -415,6 +417,23 @@ void main() {
 }
 
 void _noop() {}
+
+/// IncardIt sits on the left. Add, Scan, and Design share that row.
+void _expectHeaderRow(WidgetTester tester) {
+  final title = tester.getRect(find.text('IncardIt'));
+  final add = tester.getRect(find.widgetWithText(InkWell, 'Add+'));
+  final scan = tester.getRect(find.widgetWithText(InkWell, 'Scan'));
+  final design = tester.getRect(find.widgetWithText(InkWell, 'Design'));
+  expect(title.left, lessThan(24));
+  expect(title.right, lessThanOrEqualTo(add.left + 0.5));
+  expect(add.right, lessThanOrEqualTo(scan.left + 0.5));
+  expect(scan.right, lessThanOrEqualTo(design.left + 0.5));
+  expect((add.center.dy - title.center.dy).abs(), lessThan(16));
+  expect((scan.center.dy - add.center.dy).abs(), lessThan(2));
+  expect((design.center.dy - scan.center.dy).abs(), lessThan(2));
+  expect((design.top - add.top).abs(), lessThan(2));
+  expect(design.bottom - add.top, lessThan(add.height + 4));
+}
 
 Finder _inOpen(Finder open, Finder matching) {
   return find.descendant(of: open, matching: matching, skipOffstage: false);

@@ -321,6 +321,10 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
       wordmarkTop: deck.wordmarkTop,
       wordmarkSize: deck.wordmarkSize,
       floor: deck.floor,
+      buttonHeight: deck.buttonHeight,
+      buttonGap: deck.buttonGap,
+      buttonPad: deck.buttonPad,
+      headerHeight: deck.headerHeight,
     );
   }
 
@@ -387,7 +391,6 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
           stageW: stageW,
           stageH: stageH,
           viewportW: viewport.width,
-          viewportH: viewport.height,
           phone: phone,
           count: widget.passes.length,
           intro: _intro,
@@ -400,14 +403,6 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
         final closing = _deal.status == AnimationStatus.reverse;
         final done = _intro >= 1 && !closing;
         final label = done || closing ? 'Close wallet' : 'Open wallet';
-        final navScale = 0.94;
-        final btnH = (phone ? 36.0 : 40.0) * navScale;
-        final gap = (phone ? 8.0 : 10.0) * navScale;
-        final insetX = phone ? 12.0 : 14.0;
-        final insetY = phone ? 12.0 : 14.0;
-        final navTop = (insetY + (stageH - insetY - 48) * 16 / 100)
-            .clamp(0.0, math.max(0.0, stageH - 48))
-            .toDouble();
         final showWallet = _intro < 1;
 
         final openingIndex = _halfIndex != null && _half.value > 0
@@ -449,26 +444,21 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
                     ),
                     Positioned(
                       top: deck.wordmarkTop,
-                      left: 0,
-                      right: 0,
-                      child: IgnorePointer(
-                        child: Text(
-                          'IncardIt',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: 'Georgia',
-                            fontSize: deck.wordmarkSize,
-                            height: 0.86,
-                            letterSpacing: deck.wordmarkSize * -0.04,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF0F0F0F),
-                          ),
-                        ),
+                      left: 12,
+                      right: 12,
+                      child: _WalletHeader(
+                        wordmarkSize: deck.wordmarkSize,
+                        buttonHeight: deck.buttonHeight,
+                        buttonGap: deck.buttonGap,
+                        buttonPad: deck.buttonPad,
+                        onAdd: widget.onAdd,
+                        onScan: widget.onScan,
+                        onDesign: widget.onDesign,
                       ),
                     ),
                     if (widget.fromCache || widget.notice != null)
                       Positioned(
-                        top: deck.wordmarkTop + deck.wordmarkSize,
+                        top: deck.wordmarkTop + deck.headerHeight + 4,
                         left: 24,
                         right: 24,
                         child: Text(
@@ -478,35 +468,6 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
                           textAlign: TextAlign.center,
                         ),
                       ),
-                    Positioned(
-                      left: insetX,
-                      top: navTop,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _Pill(
-                            label: 'Add+',
-                            height: btnH,
-                            scale: navScale,
-                            onPressed: widget.onAdd,
-                          ),
-                          SizedBox(height: gap),
-                          _Pill(
-                            label: 'Scan',
-                            height: btnH,
-                            scale: navScale,
-                            onPressed: widget.onScan,
-                          ),
-                          SizedBox(height: gap),
-                          _Pill(
-                            label: 'Design',
-                            height: btnH,
-                            scale: navScale,
-                            onPressed: widget.onDesign,
-                          ),
-                        ],
-                      ),
-                    ),
                     if (_opened != null && _opened! < widget.passes.length)
                       Positioned.fill(
                         child: _OpenCard(
@@ -711,17 +672,88 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   }
 }
 
+/// IncardIt on the left, with Add, Scan, and Design on the same row.
+class _WalletHeader extends StatelessWidget {
+  const _WalletHeader({
+    required this.wordmarkSize,
+    required this.buttonHeight,
+    required this.buttonGap,
+    required this.buttonPad,
+    required this.onAdd,
+    required this.onScan,
+    required this.onDesign,
+  });
+
+  final double wordmarkSize;
+  final double buttonHeight;
+  final double buttonGap;
+  final double buttonPad;
+  final VoidCallback onAdd;
+  final VoidCallback onScan;
+  final VoidCallback onDesign;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'IncardIt',
+            maxLines: 1,
+            softWrap: false,
+            style: TextStyle(
+              fontFamily: 'Georgia',
+              fontSize: wordmarkSize,
+              height: 1,
+              letterSpacing: wordmarkSize * -0.03,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF0F0F0F),
+            ),
+          ),
+          SizedBox(width: buttonGap + 2),
+          _Pill(
+            label: 'Add+',
+            height: buttonHeight,
+            horizontalPadding: buttonPad,
+            onPressed: onAdd,
+          ),
+          SizedBox(width: buttonGap),
+          _Pill(
+            label: 'Scan',
+            height: buttonHeight,
+            horizontalPadding: buttonPad,
+            onPressed: onScan,
+          ),
+          SizedBox(width: buttonGap),
+          _Pill(
+            label: 'Design',
+            height: buttonHeight,
+            horizontalPadding: buttonPad,
+            onPressed: onDesign,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Pill extends StatelessWidget {
   const _Pill({
     required this.label,
     required this.height,
-    required this.scale,
     required this.onPressed,
+    this.scale = 1,
+    this.horizontalPadding,
   });
 
   final String label;
   final double height;
   final double scale;
+  final double? horizontalPadding;
   final VoidCallback? onPressed;
 
   @override
@@ -739,10 +771,14 @@ class _Pill extends StatelessWidget {
         child: ConstrainedBox(
           constraints: BoxConstraints(minHeight: height, maxHeight: height),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16 * scale),
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding ?? 16 * scale,
+            ),
             child: Center(
               child: Text(
                 label,
+                maxLines: 1,
+                softWrap: false,
                 style: TextStyle(
                   color: _CardsStageState._ink,
                   fontSize:
@@ -1137,6 +1173,10 @@ class _Deck {
     required this.wordmarkTop,
     required this.wordmarkSize,
     required this.floor,
+    required this.buttonHeight,
+    required this.buttonGap,
+    required this.buttonPad,
+    required this.headerHeight,
   });
 
   final List<_Placed> cards;
@@ -1146,6 +1186,10 @@ class _Deck {
   final double wordmarkTop;
   final double wordmarkSize;
   final double floor;
+  final double buttonHeight;
+  final double buttonGap;
+  final double buttonPad;
+  final double headerHeight;
 }
 
 class _Metrics {
@@ -1189,34 +1233,38 @@ _Deck _layout({
   required double stageW,
   required double stageH,
   required double viewportW,
-  required double viewportH,
   required bool phone,
   required int count,
   required double intro,
 }) {
-  // Phone cards use most of the width (about 300px on a 390px phone)
-  // and stay inside the screen. The pocket is a little wider than a card.
+  // Phone cards fill the screen with a small inset (14px). On a 390px
+  // phone that is 362px. The pocket is a few pixels wider (12px inset)
+  // when that still fits. The header sits above the fan, so the cards
+  // stay centered.
   final span = math.min(viewportW, stageW);
+  const cardInset = 14.0;
+  const pocketInset = 12.0;
   final cardW = phone
-      ? math.min(300.0, math.max(0.0, span - 90))
+      ? math.max(0.0, span - cardInset * 2)
       : math.min(270.0, viewportW * 0.26);
   final cardH = cardW * 1.7;
-  final wordmarkSize = (viewportW * 0.1355).clamp(64.0, 168.0).toDouble();
-  final wordmarkTop = viewportH * 0.004;
-  final floor = wordmarkTop + wordmarkSize * 0.86 + 8;
+  // Small enough that IncardIt, Add, Scan, and Design share one line.
+  final wordmarkSize = phone
+      ? (span * 0.066).clamp(22.0, 28.0).toDouble()
+      : (span * 0.055).clamp(28.0, 52.0).toDouble();
+  final buttonHeight = phone ? 32.0 : 40.0;
+  final buttonGap = phone ? 6.0 : 10.0;
+  final buttonPad = phone ? 9.0 : 16.0;
+  final wordmarkTop = 8.0;
+  final headerHeight = math.max(wordmarkSize, buttonHeight);
+  final floor = wordmarkTop + headerHeight + 10;
   final walletTop = stageH * (phone ? 0.50 : 0.54);
   final seam = phone ? 48.0 : 78.0;
   final walletW = phone
-      ? math.min(math.max(cardW, span - 30), cardW + 60)
+      ? math.min(math.max(0.0, span - pocketInset * 2), cardW + 4)
       : math.min(460.0, viewportW * 0.42);
-  // Shift the open fan a little right so Add, Scan, and Design
-  // keep a clear hit strip. The right edge still stays on screen.
-  const edge = 20.0;
-  const leftGuard = 70.0;
-  final maxLeft = math.max(0.0, stageW - edge - cardW);
-  final guard = math.min(leftGuard, maxLeft);
-  final centered = ((stageW - cardW) / 2).clamp(0.0, maxLeft);
-  final cardLeft = phone ? centered.clamp(guard, maxLeft) : centered;
+  final maxLeft = math.max(0.0, stageW - cardW);
+  final cardLeft = ((stageW - cardW) / 2).clamp(0.0, maxLeft);
   final ax = stageW <= 0 ? 0.5 : (cardLeft + cardW / 2) / stageW;
   final m = _fitVertical(
     ax: ax,
@@ -1270,6 +1318,10 @@ _Deck _layout({
     wordmarkTop: wordmarkTop,
     wordmarkSize: wordmarkSize,
     floor: floor,
+    buttonHeight: buttonHeight,
+    buttonGap: buttonGap,
+    buttonPad: buttonPad,
+    headerHeight: headerHeight,
   );
 }
 
