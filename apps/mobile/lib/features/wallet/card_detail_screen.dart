@@ -382,18 +382,18 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
   }
 
   List<Widget> _savedFacts() {
-    final rows = <(String, String, String)>[
-      ('name', 'Name', _name.text.trim()),
-      ('category', 'Business category', _category.text.trim()),
-      ('address', 'Address', _address.text.trim()),
-      ('location', 'Location', _location.text.trim()),
-      ('whatsapp', 'WhatsApp', _whatsapp.text.trim()),
-      ('facebook', 'Facebook', _facebook.text.trim()),
-      ('instagram', 'Instagram', _instagram.text.trim()),
-      ('qr', 'QR code', _qr.text.trim()),
-      ('website', 'Website', _website.text.trim()),
+    final rows = <(String, String)>[
+      ('name', _name.text.trim()),
+      ('category', _category.text.trim()),
+      ('address', _address.text.trim()),
+      ('location', _location.text.trim()),
+      ('whatsapp', _whatsapp.text.trim()),
+      ('facebook', _facebook.text.trim()),
+      ('instagram', _instagram.text.trim()),
+      ('qr', _qr.text.trim()),
+      ('website', _website.text.trim()),
     ];
-    final filled = rows.where((row) => row.$3.isNotEmpty).toList();
+    final filled = rows.where((row) => row.$2.isNotEmpty).toList();
     if (filled.isEmpty) return const [];
     return [
       const SizedBox(height: 16),
@@ -405,21 +405,7 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
             children: [
               CardFieldIcon(row.$1),
               const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      row.$2,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF5C5346),
-                      ),
-                    ),
-                    Text(row.$3),
-                  ],
-                ),
-              ),
+              Expanded(child: Text(row.$2)),
             ],
           ),
         ),

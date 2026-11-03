@@ -762,15 +762,6 @@ class _OpenCard extends StatelessWidget {
                                                       CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
-                                                      fact.label,
-                                                      style: TextStyle(
-                                                        color: ink.withValues(
-                                                          alpha: 0.75,
-                                                        ),
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                    Text(
                                                       fact.value,
                                                       style: TextStyle(
                                                         color: ink,

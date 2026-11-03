@@ -54,8 +54,25 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ada Lovelace'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('open-card')), findsOneWidget);
+    final open = find.byKey(const ValueKey('open-card'));
+    expect(open, findsOneWidget);
     expect(find.text('Analytical Engines'), findsWidgets);
+    expect(
+      find.descendant(of: open, matching: find.text('Ada Lovelace')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: open, matching: find.text('Analytical Engines')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: open, matching: find.text('Name')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: open, matching: find.text('Business category')),
+      findsNothing,
+    );
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('open-card')), findsNothing);

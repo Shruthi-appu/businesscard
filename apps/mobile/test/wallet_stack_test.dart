@@ -68,8 +68,24 @@ void main() {
 
     await tester.tap(find.text('Grace'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('open-card')), findsOneWidget);
-    expect(find.text('Name'), findsOneWidget);
+    final open = find.byKey(const ValueKey('open-card'));
+    expect(open, findsOneWidget);
+    expect(
+      find.descendant(of: open, matching: find.text('Grace')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: open, matching: find.text('Design')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: open, matching: find.text('Name')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: open, matching: find.text('Business category')),
+      findsNothing,
+    );
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('open-card')), findsNothing);
