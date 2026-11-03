@@ -223,6 +223,45 @@ void main() {
     );
     expect(find.textContaining('Cached card'), findsWidgets);
   });
+
+  testWidgets('opens the sample wallet when the API is down', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({
+      'access_token': _jwt({
+        'sub': '00000000-0000-4000-8000-000000000001',
+        'email': 'ada@example.com',
+        'role': 'user',
+      }),
+      'refresh_token': 'refresh-token',
+    });
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          httpClientProvider.overrideWithValue(
+            _FakeClient((method, url, body) async {
+              throw http.ClientException('offline');
+            }),
+          ),
+        ],
+        child: const SoftxuApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Open wallet'), findsOneWidget);
+    expect(find.text('IncardIt'), findsOneWidget);
+    expect(find.text('Meera Iyer'), findsOneWidget);
+    expect(find.text('Jonah Brooks'), findsOneWidget);
+    await tester.tap(find.text('Open wallet'));
+    await tester.pumpAndSettle();
+    expect(find.text('Close wallet'), findsOneWidget);
+  });
+}
+
+String _jwt(Map<String, Object?> payload) {
+  String part(Object value) {
+    return base64Url.encode(utf8.encode(jsonEncode(value))).replaceAll('=', '');
+  }
+
+  return '${part({'alg': 'none'})}.${part(payload)}.sig';
 }
 
 http.Response _authResponse({int status = 201}) {

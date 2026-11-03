@@ -28,6 +28,7 @@ class CardsStage extends StatefulWidget {
     required this.onScan,
     required this.onDesign,
     this.fromCache = false,
+    this.notice,
     this.account,
   });
 
@@ -36,6 +37,7 @@ class CardsStage extends StatefulWidget {
   final VoidCallback onScan;
   final VoidCallback onDesign;
   final bool fromCache;
+  final String? notice;
   final Widget? account;
 
   @override
@@ -152,13 +154,15 @@ class _CardsStageState extends State<CardsStage>
                     ),
                   ),
                 ),
-                if (widget.fromCache)
+                if (widget.fromCache || widget.notice != null)
                   Positioned(
                     top: deck.wordmarkTop + deck.wordmarkSize,
                     left: 24,
                     right: 24,
-                    child: const Text(
-                      'Saved on this device. These cards may be out of date.',
+                    child: Text(
+                      widget.fromCache
+                          ? 'Saved on this device. These cards may be out of date.'
+                          : widget.notice!,
                       textAlign: TextAlign.center,
                     ),
                   ),

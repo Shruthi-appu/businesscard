@@ -22,35 +22,29 @@ class WalletScreen extends ConsumerWidget {
       return const _Message(text: 'Loading your wallet…');
     }
     if (session.hasError) {
-      return _Message(
-        text: "We couldn't reach Softxu. Check your connection and try again.",
-        alert: true,
-        action: 'Retry',
-        onAction: () => ref.invalidate(sessionProvider),
+      return _SampleWallet(
+        notice: "We couldn't reach Softxu. The sample cards are still here.",
+        onRetry: () => ref.invalidate(sessionProvider),
       );
     }
     final wallet = ref.watch(walletProvider);
     return wallet.when(
       loading: () => const _Message(text: 'Loading your wallet…'),
-      error: (_, _) => _Message(
-        text: "We couldn't reach Softxu. Check your connection and try again.",
-        alert: true,
-        action: 'Retry',
-        onAction: () => ref.invalidate(walletProvider),
+      error: (_, _) => _SampleWallet(
+        notice: "We couldn't reach Softxu. The sample cards are still here.",
+        onRetry: () => ref.invalidate(walletProvider),
       ),
       data: (load) {
         if (load is WalletDenied) {
-          return const _Message(
-            text: 'You do not have access to this wallet.',
-            alert: true,
+          return const _SampleWallet(
+            notice: 'You do not have access to this wallet.',
           );
         }
         if (load is WalletOffline) {
-          return _Message(
-            text: "We couldn't reach Softxu. Check your connection and try again.",
-            alert: true,
-            action: 'Retry',
-            onAction: () => ref.invalidate(walletProvider),
+          return _SampleWallet(
+            notice:
+                "We couldn't reach Softxu. The sample cards are still here.",
+            onRetry: () => ref.invalidate(walletProvider),
           );
         }
         final ready = load as WalletReady;
@@ -121,6 +115,62 @@ class WalletScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _SampleWallet extends ConsumerWidget {
+  const _SampleWallet({required this.notice, this.onRetry});
+
+  final String notice;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    Future<void> signOut() async {
+      final problem = await ref.read(sessionProvider.notifier).logout();
+      if (problem != null && context.mounted) {
+        if (iphoneApp) {
+          await showCupertinoDialog<void>(
+            context: context,
+            builder: (dialogContext) => CupertinoAlertDialog(
+              title: Text(problem.title),
+              actions: [
+                CupertinoDialogAction(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(problem.title)));
+        }
+        return;
+      }
+      if (context.mounted) context.go('/login');
+    }
+
+    return SoftxuPage(
+      title: 'Signed in as Member',
+      trailing: iphoneApp
+          ? CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: signOut,
+              child: const Text('Sign out'),
+            )
+          : TextButton(onPressed: signOut, child: const Text('Sign out')),
+      body: CardsStage(
+        notice: notice,
+        account: onRetry == null
+            ? null
+            : SoftxuSecondaryButton(onPressed: onRetry, label: 'Retry'),
+        onAdd: () => context.push('/wallet/new'),
+        onScan: () => context.push('/wallet/scan'),
+        onDesign: () => context.push('/wallet/create'),
+        passes: testWalletPasses,
+      ),
     );
   }
 }
@@ -278,43 +328,17 @@ class _ConfirmDelete extends StatelessWidget {
 }
 
 class _Message extends StatelessWidget {
-  const _Message({
-    required this.text,
-    this.alert = false,
-    this.action,
-    this.onAction,
-  });
+  const _Message({required this.text});
 
   final String text;
-  final bool alert;
-  final String? action;
-  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
-    final color = alert
-        ? (iphoneApp
-              ? CupertinoColors.destructiveRed
-              : Theme.of(context).colorScheme.error)
-        : null;
     return SoftxuPage(
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                text,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: color),
-              ),
-              if (action != null) ...[
-                const SizedBox(height: 12),
-                SoftxuPrimaryButton(onPressed: onAction, label: action!),
-              ],
-            ],
-          ),
+          child: Text(text, textAlign: TextAlign.center),
         ),
       ),
     );

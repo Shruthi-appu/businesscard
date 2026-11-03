@@ -41,6 +41,44 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     }
   });
+
+  testWidgets('iPhone wallet opens at phone size', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(402, 874);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final errors = <Object>[];
+    final previous = FlutterError.onError;
+    FlutterError.onError = (details) {
+      errors.add(details.exception);
+      previous?.call(details);
+    };
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [httpClientProvider.overrideWithValue(_scriptedSuccess())],
+          child: const SoftxuApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Create an account'));
+      await tester.pumpAndSettle();
+      await tester.enterText(_field('Display name'), 'Ada Lovelace');
+      await tester.enterText(_field('Email'), 'ada@example.com');
+      await tester.enterText(_field('Password'), 'correct-horse');
+      await tester.tap(find.widgetWithText(CupertinoButton, 'Create account'));
+      await tester.pumpAndSettle();
+      expect(find.text('Open wallet'), findsOneWidget);
+      await tester.tap(find.text('Open wallet'));
+      await tester.pumpAndSettle();
+      expect(find.text('Close wallet'), findsOneWidget);
+      expect(errors, isEmpty);
+    } finally {
+      FlutterError.onError = previous;
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
 }
 
 Finder _field(String placeholder) {
