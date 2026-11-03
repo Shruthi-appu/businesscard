@@ -110,6 +110,58 @@ void main() {
     expect(find.byTooltip('Back'), findsOneWidget);
   });
 
+  testWidgets('tapping the wallet deals the cards out one after another', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: CardsStage(
+            onAdd: _noop,
+            onScan: _noop,
+            onDesign: _noop,
+            passes: [
+              WalletPass(label: 'Ada', detail: 'Studio'),
+              WalletPass(label: 'Grace', detail: 'Design'),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final adaTucked = tester.getCenter(
+      find.byKey(const ValueKey('wallet-pass-0')),
+    );
+    final graceTucked = tester.getCenter(
+      find.byKey(const ValueKey('wallet-pass-1')),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('wallet-pocket')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final adaMid = tester.getCenter(
+      find.byKey(const ValueKey('wallet-pass-0')),
+    );
+    final graceMid = tester.getCenter(
+      find.byKey(const ValueKey('wallet-pass-1')),
+    );
+    expect(graceTucked.dy - graceMid.dy, greaterThan(30));
+    expect((adaTucked.dy - adaMid.dy).abs(), lessThan(24));
+
+    await tester.pumpAndSettle();
+    expect(find.text('Close wallet'), findsOneWidget);
+    final ada = tester.getRect(find.byKey(const ValueKey('wallet-pass-0')));
+    final grace = tester.getRect(find.byKey(const ValueKey('wallet-pass-1')));
+    expect((grace.left - ada.left).abs(), lessThan(2));
+    expect(grace.top, greaterThan(ada.top + 40));
+    expect(grace.top, lessThan(ada.bottom - 12));
+  });
+
   testWidgets('one click opens the card detail', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);

@@ -83,12 +83,12 @@ class WalletPass {
 
 /// The exported Cards stage.
 ///
-/// Cards wait in the wallet. Open wallet deals them over 2300ms into a
-/// vertical column of wide landscape cards. The cards share one left edge,
-/// and each card overlaps the lower edge of the one above it. A tap on a
-/// lower card brings it
-/// to the top. A horizontal swipe moves through the column. A tap on the
-/// top card opens its detail page.
+/// Cards wait in the wallet. A tap on the wallet, or Open wallet, deals
+/// them out one after another into a vertical column of wide landscape
+/// cards. The cards share one left edge, and each card overlaps the lower
+/// edge of the one above it. A tap on a lower card brings it to the top.
+/// A horizontal swipe moves through the column. A tap on the top card
+/// opens its detail page.
 class CardsStage extends StatefulWidget {
   const CardsStage({
     super.key,

@@ -228,10 +228,14 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet> {
   double _rise(int index) {
     final count = widget.cards.length;
     final reveal = widget.reveal;
-    if (count <= 1) return _ease(reveal / 0.36);
-    final fromFront = count - 1 - index;
-    final start = 0.06 + fromFront * (0.58 / (count - 1));
-    return _ease((reveal - start) / 0.34);
+    if (count <= 1) return _ease(reveal / 0.42);
+    // The card at the back of the pocket leaves first, then the next, so
+    // they come out one after another.
+    final order = count - 1 - index;
+    final step = 0.70 / (count - 1);
+    final start = 0.06 + order * step;
+    const span = 0.24;
+    return _ease((reveal - start) / span);
   }
 
   Rect _frameRect(StackedCardFrame frame, int index) {
@@ -262,7 +266,9 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet> {
         final open = widget.reveal >= 1;
         return GestureDetector(
           key: const ValueKey('stacked-card-wallet'),
-          behavior: HitTestBehavior.translucent,
+          behavior: open && widget.interactive
+              ? HitTestBehavior.translucent
+              : HitTestBehavior.deferToChild,
           onHorizontalDragUpdate: open && widget.interactive
               ? (details) => _drag += details.delta.dx
               : null,
@@ -301,23 +307,27 @@ class _StackedBusinessCardWalletState extends State<StackedBusinessCardWallet> {
     required bool animate,
   }) {
     final card = widget.cards[index];
-    final child = GestureDetector(
-      key: ValueKey(card.id),
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.interactive && widget.reveal >= 1
-          ? () {
-              if (depth == 0) {
-                widget.onOpen?.call(index);
-              } else {
-                _setFront(index);
+    final open = widget.reveal >= 1 && widget.interactive;
+    final child = IgnorePointer(
+      ignoring: !open,
+      child: GestureDetector(
+        key: ValueKey(card.id),
+        behavior: HitTestBehavior.opaque,
+        onTap: open
+            ? () {
+                if (depth == 0) {
+                  widget.onOpen?.call(index);
+                } else {
+                  _setFront(index);
+                }
               }
-            }
-          : null,
-      child: BusinessCardWidget(
-        name: card.name,
-        designation: card.designation,
-        background: card.background,
-        elevation: depth == 0 ? 10 : 3,
+            : null,
+        child: BusinessCardWidget(
+          name: card.name,
+          designation: card.designation,
+          background: card.background,
+          elevation: depth == 0 ? 10 : 3,
+        ),
       ),
     );
     if (!animate) {
