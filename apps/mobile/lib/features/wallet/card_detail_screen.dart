@@ -10,6 +10,7 @@ import '../../core/api_problem.dart';
 import '../../core/providers.dart';
 import '../../ui/softxu_controls.dart';
 import '../auth/session_controller.dart';
+import 'card_fields.dart';
 
 class CardDetailScreen extends ConsumerStatefulWidget {
   const CardDetailScreen({super.key, required this.cardId});
@@ -33,6 +34,14 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
   final _email = TextEditingController();
   final _phone = TextEditingController();
   final _company = TextEditingController();
+  final _category = TextEditingController();
+  final _address = TextEditingController();
+  final _location = TextEditingController();
+  final _whatsapp = TextEditingController();
+  final _facebook = TextEditingController();
+  final _instagram = TextEditingController();
+  final _qr = TextEditingController();
+  final _website = TextEditingController();
   final _tag = TextEditingController();
   final _pin = TextEditingController();
   final _recipient = TextEditingController();
@@ -67,6 +76,14 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
     _email.dispose();
     _phone.dispose();
     _company.dispose();
+    _category.dispose();
+    _address.dispose();
+    _location.dispose();
+    _whatsapp.dispose();
+    _facebook.dispose();
+    _instagram.dispose();
+    _qr.dispose();
+    _website.dispose();
     _tag.dispose();
     _pin.dispose();
     _recipient.dispose();
@@ -98,17 +115,7 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
   }
 
   void _apply(Map<String, dynamic> body) {
-    String contact(String kind) {
-      final rows = body['contacts'];
-      if (rows is! List) return '';
-      for (final row in rows) {
-        if (row is Map && row['kind'] == kind && row['value'] is String) {
-          return row['value'] as String;
-        }
-      }
-      return '';
-    }
-
+    final details = readCardDetails(body);
     final fields = <_Field>[];
     final selected = <String>{};
     final contacts = body['contacts'];
@@ -118,7 +125,9 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
         final kind = row['kind'] as String? ?? 'field';
         final value = row['value'] as String? ?? '';
         fields.add(_Field(id: row['id'] as String, label: '$kind: $value'));
-        if (kind == 'name' || kind == 'email') selected.add(row['id'] as String);
+        if (kind == 'name' || kind == 'email') {
+          selected.add(row['id'] as String);
+        }
       }
     }
     final addresses = body['addresses'];
@@ -126,7 +135,10 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
       for (final row in addresses) {
         if (row is! Map || row['id'] is! String) continue;
         fields.add(
-          _Field(id: row['id'] as String, label: row['formattedAddress'] as String? ?? 'Address'),
+          _Field(
+            id: row['id'] as String,
+            label: row['formattedAddress'] as String? ?? 'Address',
+          ),
         );
       }
     }
@@ -143,17 +155,27 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
     final rawTags = body['tags'];
     if (rawTags is List) {
       for (final row in rawTags) {
-        if (row is Map && row['name'] is String) tags.add(row['name'] as String);
+        if (row is Map && row['name'] is String) {
+          tags.add(row['name'] as String);
+        }
       }
     }
     final warnings = body['duplicateWarnings'];
     setState(() {
       _loading = false;
       _title.text = body['title'] as String? ?? '';
-      _name.text = contact('name');
-      _email.text = contact('email');
-      _phone.text = contact('phone');
-      _company.text = contact('company');
+      _name.text = details.name;
+      _email.text = details.email;
+      _phone.text = details.phone;
+      _company.text = details.company;
+      _category.text = details.category;
+      _address.text = details.address;
+      _location.text = details.location;
+      _whatsapp.text = details.whatsapp;
+      _facebook.text = details.facebook;
+      _instagram.text = details.instagram;
+      _qr.text = details.qr;
+      _website.text = details.website;
       _walletEntryId = body['walletEntryId'] as String?;
       _versionId = body['versionId'] as String?;
       _readOnly = body['readOnly'] == true;
@@ -200,18 +222,26 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
             onPressed: _pending ? null : _toggleFavourite,
             label: _favourite ? 'Remove favourite' : 'Favourite',
           ),
+          ..._savedFacts(),
           if (_duplicate) ...[
             const SizedBox(height: 12),
             const Text('This email or phone is already in your wallet.'),
           ],
           if (_readOnly) ...[
             const SizedBox(height: 12),
-            const Text("This is a saved copy. It does not change the other person's card."),
+            const Text(
+              "This is a saved copy. It does not change the other person's card.",
+            ),
           ] else ...[
             const SizedBox(height: 24),
-            const Text('Share a link', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+            const Text(
+              'Share a link',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: 8),
-            const Text('Only the fields you check are included. Copy the link now. It is not shown again.'),
+            const Text(
+              'Only the fields you check are included. Copy the link now. It is not shown again.',
+            ),
             if (_shareError != null) Text(_shareError!),
             for (final field in _fields)
               _CheckRow(
@@ -228,12 +258,19 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
             _ChoiceRow(
               label: 'Link expires',
               value: _expires,
-              options: const {'86400': '1 day', '604800': '7 days', '2592000': '30 days'},
+              options: const {
+                '86400': '1 day',
+                '604800': '7 days',
+                '2592000': '30 days',
+              },
               onChanged: (value) => setState(() => _expires = value),
             ),
             SoftxuField(controller: _pin, label: 'PIN (optional)'),
             const SizedBox(height: 12),
-            SoftxuField(controller: _recipient, label: 'Phone for a text (optional)'),
+            SoftxuField(
+              controller: _recipient,
+              label: 'Phone for a text (optional)',
+            ),
             _CheckRow(
               label: 'Send the link by the mock text sender',
               value: _sendSms,
@@ -258,10 +295,16 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
           const SizedBox(height: 12),
           SoftxuField(controller: _tag, label: 'Tag'),
           const SizedBox(height: 8),
-          SoftxuSecondaryButton(onPressed: _pending ? null : _addTag, label: 'Add tag'),
+          SoftxuSecondaryButton(
+            onPressed: _pending ? null : _addTag,
+            label: 'Add tag',
+          ),
           if (!_readOnly) ...[
             const SizedBox(height: 24),
-            const Text('Edit card', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+            const Text(
+              'Edit card',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+            ),
             if (_error != null) Text(_error!, key: const Key('form-error')),
             const SizedBox(height: 12),
             SoftxuField(controller: _title, label: 'Card title'),
@@ -273,6 +316,60 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
             SoftxuField(controller: _phone, label: 'Phone'),
             const SizedBox(height: 12),
             SoftxuField(controller: _company, label: 'Company'),
+            const SizedBox(height: 12),
+            CardIconField(
+              field: 'category',
+              controller: _category,
+              label: 'Business category',
+            ),
+            const SizedBox(height: 12),
+            CardIconField(
+              field: 'address',
+              controller: _address,
+              label: 'Address',
+              keyboardType: TextInputType.streetAddress,
+            ),
+            const SizedBox(height: 12),
+            CardIconField(
+              field: 'location',
+              controller: _location,
+              label: 'Location',
+            ),
+            const SizedBox(height: 12),
+            CardIconField(
+              field: 'whatsapp',
+              controller: _whatsapp,
+              label: 'WhatsApp',
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 12),
+            CardIconField(
+              field: 'facebook',
+              controller: _facebook,
+              label: 'Facebook',
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 12),
+            CardIconField(
+              field: 'instagram',
+              controller: _instagram,
+              label: 'Instagram',
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 12),
+            CardIconField(
+              field: 'qr',
+              controller: _qr,
+              label: 'QR code',
+              keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 12),
+            CardIconField(
+              field: 'website',
+              controller: _website,
+              label: 'Website',
+              keyboardType: TextInputType.url,
+            ),
             const SizedBox(height: 16),
             SoftxuPrimaryButton(
               onPressed: _pending ? null : _save,
@@ -282,6 +379,51 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
         ],
       ),
     );
+  }
+
+  List<Widget> _savedFacts() {
+    final rows = <(String, String, String)>[
+      ('name', 'Name', _name.text.trim()),
+      ('category', 'Business category', _category.text.trim()),
+      ('address', 'Address', _address.text.trim()),
+      ('location', 'Location', _location.text.trim()),
+      ('whatsapp', 'WhatsApp', _whatsapp.text.trim()),
+      ('facebook', 'Facebook', _facebook.text.trim()),
+      ('instagram', 'Instagram', _instagram.text.trim()),
+      ('qr', 'QR code', _qr.text.trim()),
+      ('website', 'Website', _website.text.trim()),
+    ];
+    final filled = rows.where((row) => row.$3.isNotEmpty).toList();
+    if (filled.isEmpty) return const [];
+    return [
+      const SizedBox(height: 16),
+      for (final row in filled)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CardFieldIcon(row.$1),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      row.$2,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF5C5346),
+                      ),
+                    ),
+                    Text(row.$3),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+    ];
   }
 
   Future<void> _toggleFavourite() async {
@@ -319,20 +461,22 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
     try {
       final pin = _pin.text.trim();
       final phone = _recipient.text.trim();
-      final body = await ref.read(authApiProvider).send(
-        'POST',
-        '/v1/cards/${widget.cardId}/shares',
-        {
-          'versionId': version,
-          'fieldIds': _selected.toList(),
-          'expiresInSeconds': int.parse(_expires),
-          if (pin.isNotEmpty) 'pin': pin,
-          if (phone.isNotEmpty) 'recipientPhone': phone,
-          if (_sendSms) 'sendSms': true,
-        },
-        token: token,
-        expected: 201,
-      );
+      final body = await ref
+          .read(authApiProvider)
+          .send(
+            'POST',
+            '/v1/cards/${widget.cardId}/shares',
+            {
+              'versionId': version,
+              'fieldIds': _selected.toList(),
+              'expiresInSeconds': int.parse(_expires),
+              if (pin.isNotEmpty) 'pin': pin,
+              if (phone.isNotEmpty) 'recipientPhone': phone,
+              if (_sendSms) 'sendSms': true,
+            },
+            token: token,
+            expected: 201,
+          );
       if (mounted) setState(() => _shareUrl = body['url'] as String?);
     } on ApiProblem catch (error) {
       if (mounted) setState(() => _shareError = error.message);
@@ -354,13 +498,15 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
     if (token == null || entry == null || name.isEmpty) return;
     setState(() => _pending = true);
     try {
-      final body = await ref.read(authApiProvider).send(
-        'POST',
-        '/v1/wallet/entries/$entry/tags',
-        {'name': name},
-        token: token,
-        expected: 201,
-      );
+      final body = await ref
+          .read(authApiProvider)
+          .send(
+            'POST',
+            '/v1/wallet/entries/$entry/tags',
+            {'name': name},
+            token: token,
+            expected: 201,
+          );
       final added = body['name'] as String? ?? name;
       if (mounted) {
         setState(() {
@@ -383,20 +529,35 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
       _error = null;
     });
     try {
+      final draft = buildCardWrite(
+        name: _name.text,
+        title: _title.text,
+        email: _email.text,
+        phone: _phone.text,
+        company: _company.text,
+        category: _category.text,
+        address: _address.text,
+        location: _location.text,
+        whatsapp: _whatsapp.text,
+        facebook: _facebook.text,
+        instagram: _instagram.text,
+        qr: _qr.text,
+        website: _website.text,
+        onError: (message) => setState(() => _error = message),
+      );
+      if (draft == null) return;
       final api = ref.read(authApiProvider);
-      await api.send('PATCH', '/v1/cards/${widget.cardId}', {'title': _title.text.trim()}, token: token);
-      final contacts = [
-        if (_name.text.trim().isNotEmpty)
-          {'kind': 'name', 'value': _name.text.trim(), 'isPrimary': true},
-        if (_email.text.trim().isNotEmpty) {'kind': 'email', 'value': _email.text.trim()},
-        if (_phone.text.trim().isNotEmpty) {'kind': 'phone', 'value': _phone.text.trim()},
-        if (_company.text.trim().isNotEmpty)
-          {'kind': 'company', 'value': _company.text.trim()},
-      ];
+      await api.send('PATCH', '/v1/cards/${widget.cardId}', {
+        'title': draft.title,
+      }, token: token);
       final saved = await api.send(
         'POST',
         '/v1/cards/${widget.cardId}/versions',
-        {'contacts': contacts},
+        {
+          'contacts': draft.contacts,
+          if (draft.addresses.isNotEmpty) 'addresses': draft.addresses,
+          if (draft.socials.isNotEmpty) 'socials': draft.socials,
+        },
         token: token,
         expected: 201,
       );
@@ -441,7 +602,10 @@ class _ExchangePanelState extends ConsumerState<ExchangePanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Exchange in person', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+        const Text(
+          'Exchange in person',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
         const Text(
           'This QR is a short-lived exchange. It is not the public card QR, and it does not contain the contact details.',
@@ -451,7 +615,10 @@ class _ExchangePanelState extends ConsumerState<ExchangePanel> {
           _ChoiceRow(
             label: 'Exchange',
             value: _mode,
-            options: const {'one_way': 'They save my card', 'mutual': 'We each save a card'},
+            options: const {
+              'one_way': 'They save my card',
+              'mutual': 'We each save a card',
+            },
             onChanged: (value) => setState(() => _mode = value),
           ),
           SoftxuSecondaryButton(
@@ -460,18 +627,33 @@ class _ExchangePanelState extends ConsumerState<ExchangePanel> {
           ),
         ] else ...[
           if (session['qrPngBase64'] is String)
-            Image.memory(base64Decode(session['qrPngBase64'] as String), height: 180),
-          if (session['url'] is String) SelectableText(session['url'] as String),
+            Image.memory(
+              base64Decode(session['qrPngBase64'] as String),
+              height: 180,
+            ),
+          if (session['url'] is String)
+            SelectableText(session['url'] as String),
           if (status == 'open' || status == 'joined')
-            Text('Visible for ${_formatRemaining(_remaining)}. Anyone who opens this link can ask to save the card.'),
+            Text(
+              'Visible for ${_formatRemaining(_remaining)}. Anyone who opens this link can ask to save the card.',
+            ),
           if (status == 'accepted' && _mode == 'one_way')
-            const Text('They saved your card. Your wallet did not gain a copy.'),
-          if (status == 'accepted' && _mode == 'mutual') const Text('Exchange saved.'),
-          if (status == 'declined') const Text('This exchange was stopped. Nothing was saved.'),
+            const Text(
+              'They saved your card. Your wallet did not gain a copy.',
+            ),
+          if (status == 'accepted' && _mode == 'mutual')
+            const Text('Exchange saved.'),
+          if (status == 'declined')
+            const Text('This exchange was stopped. Nothing was saved.'),
           if (status == 'expired')
-            const Text('This exchange expired. Nothing was saved. Start again to show a new QR.'),
+            const Text(
+              'This exchange expired. Nothing was saved. Start again to show a new QR.',
+            ),
           if (status == 'open' || status == 'joined')
-            SoftxuSecondaryButton(onPressed: _pending ? null : _stop, label: 'Stop'),
+            SoftxuSecondaryButton(
+              onPressed: _pending ? null : _stop,
+              label: 'Stop',
+            ),
         ],
       ],
     );
@@ -512,16 +694,19 @@ class _ExchangePanelState extends ConsumerState<ExchangePanel> {
       _error = null;
     });
     try {
-      final body = await ref.read(authApiProvider).send(
-        'POST',
-        '/v1/exchange-sessions',
-        {'cardId': widget.cardId, 'mode': _mode, 'method': 'qr'},
-        token: token,
-        expected: 201,
-        headers: {
-          'idempotency-key': 'exchange-${widget.cardId}-${DateTime.now().microsecondsSinceEpoch}',
-        },
-      );
+      final body = await ref
+          .read(authApiProvider)
+          .send(
+            'POST',
+            '/v1/exchange-sessions',
+            {'cardId': widget.cardId, 'mode': _mode, 'method': 'qr'},
+            token: token,
+            expected: 201,
+            headers: {
+              'idempotency-key':
+                  'exchange-${widget.cardId}-${DateTime.now().microsecondsSinceEpoch}',
+            },
+          );
       if (!mounted) return;
       setState(() => _session = body);
       _arm(body);
@@ -538,7 +723,9 @@ class _ExchangePanelState extends ConsumerState<ExchangePanel> {
     final id = current?['id'];
     if (token == null || current == null || id is! String) return;
     try {
-      final next = await ref.read(authApiProvider).send('GET', '/v1/exchange-sessions/$id', null, token: token);
+      final next = await ref
+          .read(authApiProvider)
+          .send('GET', '/v1/exchange-sessions/$id', null, token: token);
       if (!mounted) return;
       final merged = {...current, ...next};
       setState(() => _session = merged);
@@ -557,13 +744,15 @@ class _ExchangePanelState extends ConsumerState<ExchangePanel> {
   Future<void> _complete(String id) async {
     final token = ref.read(sessionProvider).asData?.value?.accessToken;
     if (token == null) return;
-    final body = await ref.read(authApiProvider).send(
-      'POST',
-      '/v1/exchange-sessions/$id/complete',
-      null,
-      token: token,
-      headers: {'idempotency-key': 'exchange-complete-$id'},
-    );
+    final body = await ref
+        .read(authApiProvider)
+        .send(
+          'POST',
+          '/v1/exchange-sessions/$id/complete',
+          null,
+          token: token,
+          headers: {'idempotency-key': 'exchange-complete-$id'},
+        );
     if (!mounted) return;
     setState(() => _session = {...?_session, ...body, 'status': 'accepted'});
     _poll?.cancel();
@@ -581,7 +770,9 @@ class _ExchangePanelState extends ConsumerState<ExchangePanel> {
         {'accept': false},
         token: token,
       );
-      if (mounted) setState(() => _session = {...?_session, 'status': 'declined'});
+      if (mounted) {
+        setState(() => _session = {...?_session, 'status': 'declined'});
+      }
       _poll?.cancel();
     } on ApiProblem catch (error) {
       if (mounted) setState(() => _error = error.message);
@@ -618,7 +809,9 @@ class _ChoiceRow extends StatelessWidget {
               for (final entry in options.entries)
                 SoftxuLink(
                   onPressed: () => onChanged(entry.key),
-                  label: entry.key == value ? '${entry.value} · selected' : entry.value,
+                  label: entry.key == value
+                      ? '${entry.value} · selected'
+                      : entry.value,
                 ),
             ],
           ),
@@ -629,7 +822,11 @@ class _ChoiceRow extends StatelessWidget {
 }
 
 class _CheckRow extends StatelessWidget {
-  const _CheckRow({required this.label, required this.value, required this.onChanged});
+  const _CheckRow({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
 
   final String label;
   final bool value;
