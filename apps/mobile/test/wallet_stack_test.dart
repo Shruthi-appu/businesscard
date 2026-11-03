@@ -32,6 +32,10 @@ void main() {
     final tuckedGrace = tester.getCenter(find.text('Grace'));
     expect((tuckedAda.dy - tuckedGrace.dy).abs(), lessThan(24));
     expect(find.text('Open wallet'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('wallet-pocket'))).width,
+      closeTo(230, 1),
+    );
 
     await tester.tap(find.text('Open wallet'));
     await tester.pumpAndSettle();

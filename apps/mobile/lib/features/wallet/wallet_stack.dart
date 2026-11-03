@@ -30,6 +30,7 @@ class CardsStage extends StatefulWidget {
     this.fromCache = false,
     this.notice,
     this.account,
+    this.footer,
   });
 
   final List<WalletPass> passes;
@@ -39,6 +40,7 @@ class CardsStage extends StatefulWidget {
   final bool fromCache;
   final String? notice;
   final Widget? account;
+  final Widget? footer;
 
   @override
   State<CardsStage> createState() => _CardsStageState();
@@ -199,6 +201,13 @@ class _CardsStageState extends State<CardsStage>
                     ],
                   ),
                 ),
+                if (widget.footer != null)
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 8,
+                    child: widget.footer!,
+                  ),
                 Positioned(
                   right: phone ? 12 : 18,
                   top: deck.floor + 8,
@@ -236,6 +245,7 @@ class _CardsStageState extends State<CardsStage>
       child: Opacity(
         opacity: fade,
         child: GestureDetector(
+          key: const ValueKey('wallet-pocket'),
           onTap: _intro == 0 ? _open : null,
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -549,8 +559,8 @@ _Deck _layout({
   final walletTop = stageH * (phone ? 0.50 : 0.54);
   final seam = phone ? 48.0 : 78.0;
   final walletW = phone
-      ? math.min(318.0, viewportW * 0.84)
-      : math.min(680.0, viewportW * 0.58);
+      ? math.min(230.0, viewportW * 0.62)
+      : math.min(460.0, viewportW * 0.42);
   final base = phone
       ? const _Metrics(stepX: 0, stepY: 30, ax: 0.5, ay: 0.46)
       : const _Metrics(stepX: 0, stepY: 50, ax: 0.5, ay: 0.31);

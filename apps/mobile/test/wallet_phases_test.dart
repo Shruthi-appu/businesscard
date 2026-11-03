@@ -39,6 +39,15 @@ void main() {
     expect(find.text('Design'), findsOneWidget);
     expect(find.text('IncardIt'), findsOneWidget);
     expect(find.text('Export my data'), findsOneWidget);
+    expect(find.text('Delete account'), findsOneWidget);
+    expect(
+      find.text('I understand this schedules deletion and signs me out.'),
+      findsOneWidget,
+    );
+    expect(
+      tester.getCenter(find.text('Delete account')).dy,
+      greaterThan(tester.getCenter(find.text('Export my data')).dy + 40),
+    );
     expect(find.text('Ada Lovelace'), findsWidgets);
 
     await tester.tap(find.text('Open wallet'));

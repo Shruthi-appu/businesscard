@@ -68,18 +68,11 @@ class WalletScreen extends ConsumerWidget {
         final lines = snapshot.cards.isEmpty
             ? snapshot.titles
             : snapshot.cards.map((card) => card.label).toList();
-        return SoftxuPage(
-          title: 'Signed in as $name',
-          trailing: iphoneApp
-              ? CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  onPressed: signOut,
-                  child: const Text('Sign out'),
-                )
-              : TextButton(onPressed: signOut, child: const Text('Sign out')),
-          body: CardsStage(
+        CardsStage stage({Widget? account, Widget? footer}) {
+          return CardsStage(
             fromCache: ready.fromCache,
-            account: ready.fromCache ? null : const _AccountSection(),
+            account: account,
+            footer: footer,
             onAdd: () => context.push('/wallet/new'),
             onScan: () => context.push('/wallet/scan'),
             onDesign: () => context.push('/wallet/create'),
@@ -102,7 +95,24 @@ class WalletScreen extends ConsumerWidget {
                       : null,
                 ),
             ],
-          ),
+          );
+        }
+
+        return SoftxuPage(
+          title: 'Signed in as $name',
+          trailing: iphoneApp
+              ? CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: signOut,
+                  child: const Text('Sign out'),
+                )
+              : TextButton(onPressed: signOut, child: const Text('Sign out')),
+          body: ready.fromCache
+              ? stage()
+              : _AccountSection(
+                  builder: (export, danger) =>
+                      stage(account: export, footer: danger),
+                ),
         );
       },
     );
@@ -162,7 +172,9 @@ class _SampleWallet extends ConsumerWidget {
 }
 
 class _AccountSection extends ConsumerStatefulWidget {
-  const _AccountSection();
+  const _AccountSection({required this.builder});
+
+  final Widget Function(Widget export, Widget danger) builder;
 
   @override
   ConsumerState<_AccountSection> createState() => _AccountSectionState();
@@ -176,33 +188,42 @@ class _AccountSectionState extends ConsumerState<_AccountSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Account',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        SoftxuSecondaryButton(
-          onPressed: _pending ? null : _export,
-          label: _pending ? 'Working…' : 'Export my data',
-        ),
-        const SizedBox(height: 8),
-        _ConfirmDelete(
-          value: _confirm,
-          onChanged: (value) => setState(() => _confirm = value),
-        ),
-        SoftxuSecondaryButton(
-          onPressed: _pending ? null : _delete,
-          label: 'Delete account',
-        ),
-        if (_message != null)
-          Text(
+    final message = _message == null
+        ? null
+        : Text(
             _message!,
             key: Key(_problem ? 'account-alert' : 'account-status'),
+          );
+    return widget.builder(
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Account',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
           ),
-      ],
+          const SizedBox(height: 8),
+          SoftxuSecondaryButton(
+            onPressed: _pending ? null : _export,
+            label: _pending ? 'Working…' : 'Export my data',
+          ),
+        ],
+      ),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _ConfirmDelete(
+            value: _confirm,
+            onChanged: (value) => setState(() => _confirm = value),
+          ),
+          const SizedBox(height: 8),
+          SoftxuSecondaryButton(
+            onPressed: _pending ? null : _delete,
+            label: 'Delete account',
+          ),
+          ?message,
+        ],
+      ),
     );
   }
 
