@@ -5,7 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../ui/softxu_controls.dart';
-import 'card_fields.dart';
+import 'card_links.dart';
 
 /// Opens the account side menu from the header.
 class WalletMenuHandle {
@@ -96,6 +96,7 @@ class CardsStage extends StatefulWidget {
     this.notice,
     this.menu,
     this.menuHandle,
+    this.openLink,
   });
 
   final List<WalletPass> passes;
@@ -110,6 +111,9 @@ class CardsStage extends StatefulWidget {
 
   /// Header control that opens [menu]. The stage still draws the panel.
   final WalletMenuHandle? menuHandle;
+
+  /// Opens a fact's map, chat, or profile link. Defaults to [launchCardLink].
+  final CardLinkLauncher? openLink;
 
   @override
   State<CardsStage> createState() => _CardsStageState();
@@ -474,6 +478,7 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
                           pass: widget.passes[_opened!],
                           palette: _palettes[_opened! % _palettes.length],
                           showBack: _opened!.isOdd,
+                          openLink: widget.openLink,
                           onClose: () => setState(() => _opened = null),
                         ),
                       ),
@@ -1008,12 +1013,14 @@ class _OpenCard extends StatelessWidget {
     required this.palette,
     required this.showBack,
     required this.onClose,
+    this.openLink,
   });
 
   final WalletPass pass;
   final _Palette palette;
   final bool showBack;
   final VoidCallback onClose;
+  final CardLinkLauncher? openLink;
 
   @override
   Widget build(BuildContext context) {
@@ -1088,42 +1095,22 @@ class _OpenCard extends StatelessWidget {
                                           padding: const EdgeInsets.only(
                                             bottom: 10,
                                           ),
-                                          child: Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              CardFieldIcon(
-                                                fact.field,
-                                                size: 18,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      fact.value,
-                                                      style: TextStyle(
-                                                        color: ink,
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                    if (fact.extra != null &&
-                                                        fact.extra!.isNotEmpty)
-                                                      Text(
-                                                        fact.extra!,
-                                                        style: TextStyle(
-                                                          color: ink,
-                                                          fontSize: 11,
-                                                        ),
-                                                      ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
+                                          child: CardFactRow(
+                                            field: fact.field,
+                                            value: fact.value,
+                                            extra: fact.extra,
+                                            iconSize: 18,
+                                            gap: 8,
+                                            launcher: openLink,
+                                            valueStyle: TextStyle(
+                                              color: ink,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            extraStyle: TextStyle(
+                                              color: ink,
+                                              fontSize: 11,
+                                            ),
                                           ),
                                         ),
                                     ],

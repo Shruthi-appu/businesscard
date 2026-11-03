@@ -11,11 +11,15 @@ import '../../core/providers.dart';
 import '../../ui/softxu_controls.dart';
 import '../auth/session_controller.dart';
 import 'card_fields.dart';
+import 'card_links.dart';
 
 class CardDetailScreen extends ConsumerStatefulWidget {
-  const CardDetailScreen({super.key, required this.cardId});
+  const CardDetailScreen({super.key, required this.cardId, this.openLink});
 
   final String cardId;
+
+  /// Opens a fact outside the app. Defaults to [launchCardLink].
+  final CardLinkLauncher? openLink;
 
   @override
   ConsumerState<CardDetailScreen> createState() => _CardDetailScreenState();
@@ -374,7 +378,9 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
       ('category', _category.text.trim()),
       ('address', _address.text.trim()),
       ('location', _location.text.trim()),
+      ('phone', _phone.text.trim()),
       ('whatsapp', _whatsapp.text.trim()),
+      ('email', _email.text.trim()),
       ('facebook', _facebook.text.trim()),
       ('instagram', _instagram.text.trim()),
       ('qr', _qr.text.trim()),
@@ -387,13 +393,10 @@ class _CardDetailScreenState extends ConsumerState<CardDetailScreen> {
       for (final row in filled)
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CardFieldIcon(row.$1),
-              const SizedBox(width: 12),
-              Expanded(child: Text(row.$2)),
-            ],
+          child: CardFactRow(
+            field: row.$1,
+            value: row.$2,
+            launcher: widget.openLink,
           ),
         ),
     ];

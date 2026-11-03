@@ -51,6 +51,20 @@ Widget iconFor(String field, [double size = 22]) {
         color: const Color(0xFF1E3A5F),
         semanticLabel: 'Location',
       );
+    case 'phone':
+    case 'tel':
+    case 'mobile':
+      return Icon(
+        CupertinoIcons.phone_fill,
+        size: size,
+        semanticLabel: 'Phone',
+      );
+    case 'email':
+      return Icon(
+        CupertinoIcons.mail_solid,
+        size: size,
+        semanticLabel: 'Email',
+      );
     case 'whatsapp':
       return Icon(
         cardWhatsappIcon,

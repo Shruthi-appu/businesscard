@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../ui/softxu_controls.dart';
 import 'card_fields.dart';
+import 'card_links.dart';
 import 'test_cards.dart';
 
 /// The saved details for one sample card.
 class SampleCardScreen extends StatelessWidget {
-  const SampleCardScreen({super.key, required this.card});
+  const SampleCardScreen({super.key, required this.card, this.openLink});
 
   final TestCard card;
+
+  /// Opens a fact outside the app. Defaults to [launchCardLink].
+  final CardLinkLauncher? openLink;
 
   @override
   Widget build(BuildContext context) {
@@ -32,27 +36,16 @@ class SampleCardScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-Widget _fact(String field, String value, {String? extra}) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 14),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CardFieldIcon(field),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(value),
-              if (extra != null && extra.isNotEmpty)
-                Text(extra, style: const TextStyle(fontSize: 12)),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
+  Widget _fact(String field, String value, {String? extra}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: CardFactRow(
+        field: field,
+        value: value,
+        extra: extra,
+        launcher: openLink,
+      ),
+    );
+  }
 }
