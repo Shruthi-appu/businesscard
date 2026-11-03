@@ -184,7 +184,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Add a card'));
+    await tester.tap(find.text('Add+'));
     await tester.pumpAndSettle();
 
     expect(find.byIcon(cardNameIcon), findsOneWidget);

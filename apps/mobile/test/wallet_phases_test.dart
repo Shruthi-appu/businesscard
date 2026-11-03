@@ -23,17 +23,26 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'Email'), 'ada@example.com');
-    await tester.enterText(find.widgetWithText(TextField, 'Password'), 'correct-horse');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Email'),
+      'ada@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Password'),
+      'correct-horse',
+    );
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await tester.pumpAndSettle();
 
-    expect(find.byTooltip('Add a card'), findsOneWidget);
-    expect(find.byTooltip('Scan a card'), findsOneWidget);
-    expect(find.text('Design a card'), findsOneWidget);
+    expect(find.text('Add+'), findsOneWidget);
+    expect(find.text('Scan'), findsOneWidget);
+    expect(find.text('Design'), findsOneWidget);
+    expect(find.text('IncardIt'), findsOneWidget);
     expect(find.text('Export my data'), findsOneWidget);
     expect(find.text('Ada Lovelace'), findsWidgets);
 
+    await tester.tap(find.text('Open wallet'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Ada Lovelace'));
     await tester.pumpAndSettle();
     expect(find.text('Share a link'), findsOneWidget);
@@ -48,8 +57,8 @@ void main() {
     await tester.tap(find.byTooltip('Back'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
-    await tester.ensureVisible(find.byTooltip('Scan a card'));
-    await tester.tap(find.byTooltip('Scan a card'));
+    await tester.ensureVisible(find.text('Scan'));
+    await tester.tap(find.text('Scan'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Read the sample card'));
     await tester.pumpAndSettle();
@@ -109,7 +118,8 @@ _Client _client() {
         'nextCursor': null,
       });
     }
-    if (url.path == '/v1/cards/00000000-0000-4000-8000-000000000010' && method == 'GET') {
+    if (url.path == '/v1/cards/00000000-0000-4000-8000-000000000010' &&
+        method == 'GET') {
       return _json({
         'id': '00000000-0000-4000-8000-000000000010',
         'walletEntryId': '00000000-0000-4000-8000-000000000011',
@@ -138,20 +148,30 @@ _Client _client() {
       return _json({
         'id': '00000000-0000-4000-8000-000000000020',
         'url': 'https://softxu.test/exchange/session',
-        'qrPngBase64':
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'qrPngBase64': 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
         'expiresAt': '2099-01-01T00:00:00.000Z',
         'status': 'open',
         'mode': 'one_way',
       }, 201);
     }
     if (url.path == '/v1/scans' && method == 'POST') {
-      return _json({'id': 'scan-1', 'status': 'queued', 'draftVersion': 0, 'draft': null}, 201);
+      return _json({
+        'id': 'scan-1',
+        'status': 'queued',
+        'draftVersion': 0,
+        'draft': null,
+      }, 201);
     }
     if (url.path == '/v1/scans/scan-1/upload-url') {
-      return _json({'assetId': 'asset-1', 'method': 'POST', 'uploadUrl': 'http://local/upload'});
+      return _json({
+        'assetId': 'asset-1',
+        'method': 'POST',
+        'uploadUrl': 'http://local/upload',
+      });
     }
-    if (url.path.startsWith('/v1/scans/scan-1/objects/')) return _json({'stored': true});
+    if (url.path.startsWith('/v1/scans/scan-1/objects/')) {
+      return _json({'stored': true});
+    }
     if (url.path == '/v1/scans/scan-1/complete') {
       completes += 1;
       return _json({
@@ -173,12 +193,17 @@ _Client _client() {
 class _Client extends http.BaseClient {
   _Client(this.handler);
 
-  final Future<http.Response> Function(String method, Uri url, String body) handler;
+  final Future<http.Response> Function(String method, Uri url, String body)
+  handler;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final bytes = await request.finalize().toBytes();
-    final response = await handler(request.method, request.url, utf8.decode(bytes));
+    final response = await handler(
+      request.method,
+      request.url,
+      utf8.decode(bytes),
+    );
     return http.StreamedResponse(
       Stream<List<int>>.value(response.bodyBytes),
       response.statusCode,

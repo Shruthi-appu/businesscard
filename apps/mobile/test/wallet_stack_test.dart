@@ -3,38 +3,45 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:softxu/features/wallet/wallet_stack.dart';
 
 void main() {
-  testWidgets('cards rise out of the wallet into a portrait link stack', (
+  testWidgets('cards wait in the wallet, then deal into a vertical stack', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(390, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(
-      MaterialApp(
+      const MaterialApp(
         home: Scaffold(
-          body: WalletSleeveStack(
-            passes: const [
+          body: CardsStage(
+            onAdd: _noop,
+            onScan: _noop,
+            onDesign: _noop,
+            passes: [
               WalletPass(label: 'Ada'),
               WalletPass(label: 'Grace'),
             ],
-            onAdd: _noop,
-            onScan: _noop,
           ),
         ),
       ),
     );
-
-    final start = tester
-        .getTopLeft(find.byKey(const ValueKey('wallet-pass-0')))
-        .dy;
     await tester.pumpAndSettle();
-    final first = tester.getRect(find.byKey(const ValueKey('wallet-pass-0')));
-    final second = tester.getRect(find.byKey(const ValueKey('wallet-pass-1')));
 
-    expect(first.top, lessThan(start - 40));
-    expect(first.width, closeTo(200, 0.5));
-    expect(first.height / first.width, closeTo(1.7, 0.01));
-    expect(second.top - first.top, closeTo(first.height * 0.18, 1));
-    expect(second.left, first.left);
+    final tuckedAda = tester.getCenter(find.text('Ada'));
+    final tuckedGrace = tester.getCenter(find.text('Grace'));
+    expect((tuckedAda.dy - tuckedGrace.dy).abs(), lessThan(24));
+    expect(find.text('Open wallet'), findsOneWidget);
+
+    await tester.tap(find.text('Open wallet'));
+    await tester.pumpAndSettle();
+
+    final ada = tester.getCenter(find.text('Ada'));
+    final grace = tester.getCenter(find.text('Grace'));
+    final card = tester.getSize(find.byKey(const ValueKey('wallet-pass-0')));
+    expect(grace.dy, greaterThan(ada.dy + 12));
+    expect(card.width, closeTo(200, 1));
+    expect(card.height / card.width, closeTo(1.7, 0.02));
+    expect(find.text('Close wallet'), findsOneWidget);
   });
 }
 

@@ -43,8 +43,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Create an account'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'Display name'), 'Ada');
-    await tester.enterText(find.widgetWithText(TextField, 'Email'), 'ada@example.com');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Display name'),
+      'Ada',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Email'),
+      'ada@example.com',
+    );
     await tester.enterText(find.widgetWithText(TextField, 'Password'), 'short');
     await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
     await tester.pumpAndSettle();
@@ -52,27 +58,37 @@ void main() {
     expect(find.textContaining('Too short'), findsOneWidget);
   });
 
-  testWidgets('register opens an empty wallet and stores tokens', (tester) async {
+  testWidgets('register opens an empty wallet and stores tokens', (
+    tester,
+  ) async {
     final backing = <String, String>{};
     FlutterSecureStorage.setMockInitialValues(backing);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          httpClientProvider.overrideWithValue(_scriptedSuccess()),
-        ],
+        overrides: [httpClientProvider.overrideWithValue(_scriptedSuccess())],
         child: const SoftxuApp(),
       ),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Create an account'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'Display name'), 'Ada Lovelace');
-    await tester.enterText(find.widgetWithText(TextField, 'Email'), 'ada@example.com');
-    await tester.enterText(find.widgetWithText(TextField, 'Password'), 'correct-horse');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Display name'),
+      'Ada Lovelace',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Email'),
+      'ada@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Password'),
+      'correct-horse',
+    );
     await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
     await tester.pumpAndSettle();
     expect(find.text('Signed in as Ada Lovelace'), findsOneWidget);
-    expect(find.text('No cards yet'), findsOneWidget);
+    expect(find.text('IncardIt'), findsOneWidget);
+    expect(find.text('Open wallet'), findsOneWidget);
     expect(backing['access_token'], 'access-token');
     expect(backing['refresh_token'], 'refresh-token');
   });
@@ -91,8 +107,14 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'Email'), 'ada@example.com');
-    await tester.enterText(find.widgetWithText(TextField, 'Password'), 'correct-horse');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Email'),
+      'ada@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Password'),
+      'correct-horse',
+    );
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await tester.pumpAndSettle();
     expect(find.textContaining("couldn't reach Softxu"), findsOneWidget);
@@ -123,14 +145,22 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'Email'), 'ada@example.com');
-    await tester.enterText(find.widgetWithText(TextField, 'Password'), 'correct-horse');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Email'),
+      'ada@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Password'),
+      'correct-horse',
+    );
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await tester.pumpAndSettle();
     expect(find.textContaining('do not have access'), findsOneWidget);
   });
 
-  testWidgets('wallet shows cards saved on this device when the list fails', (tester) async {
+  testWidgets('wallet shows cards saved on this device when the list fails', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -146,7 +176,9 @@ void main() {
           ),
           httpClientProvider.overrideWithValue(
             _FakeClient((method, url, body) async {
-              if (url.path == '/v1/auth/login') return _authResponse(status: 200);
+              if (url.path == '/v1/auth/login') {
+                return _authResponse(status: 200);
+              }
               if (url.path == '/v1/me') {
                 return http.Response(
                   jsonEncode({
@@ -170,11 +202,20 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'Email'), 'ada@example.com');
-    await tester.enterText(find.widgetWithText(TextField, 'Password'), 'correct-horse');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Email'),
+      'ada@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Password'),
+      'correct-horse',
+    );
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await tester.pumpAndSettle();
-    expect(find.text('Saved on this device. These cards may be out of date.'), findsOneWidget);
+    expect(
+      find.text('Saved on this device. These cards may be out of date.'),
+      findsOneWidget,
+    );
     expect(find.textContaining('Cached card'), findsWidgets);
   });
 }
@@ -225,12 +266,17 @@ _FakeClient _scriptedSuccess() {
 class _FakeClient extends http.BaseClient {
   _FakeClient(this.handler);
 
-  final Future<http.Response> Function(String method, Uri url, String body) handler;
+  final Future<http.Response> Function(String method, Uri url, String body)
+  handler;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
     final bytes = await request.finalize().toBytes();
-    final response = await handler(request.method, request.url, utf8.decode(bytes));
+    final response = await handler(
+      request.method,
+      request.url,
+      utf8.decode(bytes),
+    );
     return http.StreamedResponse(
       Stream<List<int>>.value(response.bodyBytes),
       response.statusCode,

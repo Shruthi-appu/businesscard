@@ -33,7 +33,8 @@ void main() {
       await tester.tap(find.widgetWithText(CupertinoButton, 'Create account'));
       await tester.pumpAndSettle();
       expect(find.text('Signed in as Ada Lovelace'), findsOneWidget);
-      expect(find.text('No cards yet'), findsOneWidget);
+      expect(find.text('IncardIt'), findsOneWidget);
+      expect(find.text('Open wallet'), findsOneWidget);
       expect(find.byType(CupertinoNavigationBar), findsOneWidget);
       expect(find.text('Sign out'), findsOneWidget);
     } finally {

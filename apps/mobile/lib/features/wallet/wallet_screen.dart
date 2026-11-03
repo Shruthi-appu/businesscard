@@ -80,136 +80,46 @@ class WalletScreen extends ConsumerWidget {
           if (context.mounted) context.go('/login');
         }
 
-        final query = ref.watch(walletQueryProvider);
         final lines = snapshot.cards.isEmpty
             ? snapshot.titles
             : snapshot.cards.map((card) => card.label).toList();
-        final body = ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Text('Signed in as $name'),
-            if (ready.fromCache) ...[
-              const SizedBox(height: 12),
-              const Text(
-                'Saved on this device. These cards may be out of date.',
-              ),
-            ],
-            const SizedBox(height: 12),
-            _WalletSearch(
-              text: query.text,
-              onChanged: (value) => ref.read(walletQueryProvider.notifier).setText(value),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final choice in const [
-                  ('all', 'All cards'),
-                  ('favourites', 'Favourites'),
-                  ('manual', 'Typed in'),
-                ])
-                  SoftxuLink(
-                    onPressed: () => ref.read(walletQueryProvider.notifier).setFilter(choice.$1),
-                    label: query.filter == choice.$1 ? '${choice.$2} · selected' : choice.$2,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (lines.isEmpty) ...[
-              Text(
-                query.text.isNotEmpty || query.filter != 'all'
-                    ? 'No matching cards'
-                    : 'No cards yet',
-                style: iphoneApp
-                    ? const TextStyle(fontSize: 28, fontWeight: FontWeight.w600)
-                    : Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                query.text.isNotEmpty || query.filter != 'all'
-                    ? 'Try a different search or show all cards.'
-                    : 'Cards you create or receive will show up here.',
-              ),
-              const SizedBox(height: 12),
-            ],
-            WalletSleeveStack(
-              passes: [
-                for (var index = 0; index < lines.length; index++)
-                  WalletPass(
-                    label: lines[index],
-                    detail: index < snapshot.cards.length ? snapshot.cards[index].company : null,
-                    favourite: index < snapshot.cards.length && snapshot.cards[index].isFavourite,
-                    onOpen: index < snapshot.cards.length && snapshot.cards[index].id.isNotEmpty
-                        ? () => context.push('/wallet/${snapshot.cards[index].id}')
-                        : null,
-                  ),
-              ],
-              onAdd: () => context.push('/wallet/new'),
-              onScan: () => context.push('/wallet/scan'),
-            ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: SoftxuLink(
-                onPressed: () => context.push('/wallet/create'),
-                label: 'Design a card',
-              ),
-            ),
-            if (!ready.fromCache) ...[
-              const SizedBox(height: 8),
-              const _AccountSection(),
-            ],
-            if (!iphoneApp) ...[
-              const SizedBox(height: 24),
-              OutlinedButton(onPressed: signOut, child: const Text('Sign out')),
-            ],
-          ],
-        );
         return SoftxuPage(
-          title: 'Wallet',
+          title: 'Signed in as $name',
           trailing: iphoneApp
               ? CupertinoButton(
                   padding: EdgeInsets.zero,
                   onPressed: signOut,
                   child: const Text('Sign out'),
                 )
-              : null,
-          body: body,
+              : TextButton(onPressed: signOut, child: const Text('Sign out')),
+          body: CardsStage(
+            fromCache: ready.fromCache,
+            account: ready.fromCache ? null : const _AccountSection(),
+            onAdd: () => context.push('/wallet/new'),
+            onScan: () => context.push('/wallet/scan'),
+            onDesign: () => context.push('/wallet/create'),
+            passes: [
+              for (var index = 0; index < lines.length; index++)
+                WalletPass(
+                  label: lines[index],
+                  detail: index < snapshot.cards.length
+                      ? snapshot.cards[index].company
+                      : null,
+                  favourite:
+                      index < snapshot.cards.length &&
+                      snapshot.cards[index].isFavourite,
+                  onOpen:
+                      index < snapshot.cards.length &&
+                          snapshot.cards[index].id.isNotEmpty
+                      ? () =>
+                            context.push('/wallet/${snapshot.cards[index].id}')
+                      : null,
+                ),
+            ],
+          ),
         );
       },
     );
-  }
-}
-
-class _WalletSearch extends StatefulWidget {
-  const _WalletSearch({required this.text, required this.onChanged});
-
-  final String text;
-  final ValueChanged<String> onChanged;
-
-  @override
-  State<_WalletSearch> createState() => _WalletSearchState();
-}
-
-class _WalletSearchState extends State<_WalletSearch> {
-  late final TextEditingController _controller = TextEditingController(text: widget.text);
-
-  @override
-  void didUpdateWidget(covariant _WalletSearch oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.text != _controller.text) {
-      _controller.value = TextEditingValue(text: widget.text);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SoftxuField(controller: _controller, label: 'Search', onChanged: widget.onChanged);
   }
 }
 
@@ -231,20 +141,29 @@ class _AccountSectionState extends ConsumerState<_AccountSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Account', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+        const Text(
+          'Account',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
         SoftxuSecondaryButton(
           onPressed: _pending ? null : _export,
           label: _pending ? 'Working…' : 'Export my data',
         ),
         const SizedBox(height: 8),
-        _ConfirmDelete(value: _confirm, onChanged: (value) => setState(() => _confirm = value)),
+        _ConfirmDelete(
+          value: _confirm,
+          onChanged: (value) => setState(() => _confirm = value),
+        ),
         SoftxuSecondaryButton(
           onPressed: _pending ? null : _delete,
           label: 'Delete account',
         ),
         if (_message != null)
-          Text(_message!, key: Key(_problem ? 'account-alert' : 'account-status')),
+          Text(
+            _message!,
+            key: Key(_problem ? 'account-alert' : 'account-status'),
+          ),
       ],
     );
   }
@@ -263,9 +182,14 @@ class _AccountSectionState extends ConsumerState<_AccountSection> {
         '/v1/me/export',
         null,
         token: token,
-        headers: {'idempotency-key': 'export-${DateTime.now().microsecondsSinceEpoch}'},
+        headers: {
+          'idempotency-key': 'export-${DateTime.now().microsecondsSinceEpoch}',
+        },
       );
-      final file = await api.readText('/v1/me/exports/${created['id']}/file', token: token);
+      final file = await api.readText(
+        '/v1/me/exports/${created['id']}/file',
+        token: token,
+      );
       await Clipboard.setData(ClipboardData(text: file));
       if (mounted) {
         setState(() {
@@ -300,13 +224,18 @@ class _AccountSectionState extends ConsumerState<_AccountSection> {
       _message = null;
     });
     try {
-      await ref.read(authApiProvider).send(
-        'POST',
-        '/v1/me/delete',
-        {'confirm': true},
-        token: token,
-        headers: {'idempotency-key': 'delete-${DateTime.now().microsecondsSinceEpoch}'},
-      );
+      await ref
+          .read(authApiProvider)
+          .send(
+            'POST',
+            '/v1/me/delete',
+            {'confirm': true},
+            token: token,
+            headers: {
+              'idempotency-key':
+                  'delete-${DateTime.now().microsecondsSinceEpoch}',
+            },
+          );
       await ref.read(sessionProvider.notifier).logout();
       if (mounted) context.go('/login');
     } on ApiProblem catch (error) {
@@ -332,7 +261,11 @@ class _ConfirmDelete extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: const Text('I understand this schedules deletion and signs me out.')),
+        Expanded(
+          child: const Text(
+            'I understand this schedules deletion and signs me out.',
+          ),
+        ),
         if (iphoneApp)
           CupertinoSwitch(value: value, onChanged: onChanged)
         else
