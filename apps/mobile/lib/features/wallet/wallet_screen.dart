@@ -8,6 +8,7 @@ import '../../core/api_problem.dart';
 import '../../core/providers.dart';
 import '../../ui/softxu_controls.dart';
 import '../auth/session_controller.dart';
+import 'test_cards.dart';
 import 'wallet_controller.dart';
 import 'wallet_stack.dart';
 
@@ -99,6 +100,7 @@ class WalletScreen extends ConsumerWidget {
             onScan: () => context.push('/wallet/scan'),
             onDesign: () => context.push('/wallet/create'),
             passes: [
+              ...testWalletPasses,
               for (var index = 0; index < lines.length; index++)
                 WalletPass(
                   label: lines[index],

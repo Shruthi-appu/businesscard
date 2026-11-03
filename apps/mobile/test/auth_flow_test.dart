@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:softxu/app.dart';
 import 'package:softxu/core/auth_api.dart';
 import 'package:softxu/core/providers.dart';
+import 'package:softxu/features/wallet/test_cards.dart';
 import 'package:softxu/features/wallet/wallet_cache.dart';
 import 'package:softxu/features/wallet/wallet_controller.dart';
 
@@ -89,6 +90,10 @@ void main() {
     expect(find.text('Signed in as Ada Lovelace'), findsOneWidget);
     expect(find.text('IncardIt'), findsOneWidget);
     expect(find.text('Open wallet'), findsOneWidget);
+    expect(testWalletPasses, hasLength(20));
+    for (final pass in testWalletPasses) {
+      expect(find.text(pass.label), findsOneWidget);
+    }
     expect(backing['access_token'], 'access-token');
     expect(backing['refresh_token'], 'refresh-token');
   });
