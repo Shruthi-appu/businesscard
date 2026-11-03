@@ -81,47 +81,24 @@ void main() {
     await tester.pumpAndSettle();
 
     final graceRest = tester.getRect(graceCard);
-    final graceTextRest = tester.getTopLeft(find.text('Grace')).dy;
     await tester.tap(find.text('Grace'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('open-card')), findsNothing);
-    final graceHalf = tester.getRect(graceCard);
-    final graceText = tester.getTopLeft(find.text('Grace')).dy;
-    expect((graceHalf.top - graceRest.top).abs(), lessThan(12));
-    expect(
-      graceHalf.height,
-      closeTo(graceRest.height * 1.5, graceRest.height * 0.12),
-    );
-    expect((graceText - graceTextRest).abs(), lessThan(40));
-    expect(graceText, lessThan(graceHalf.top + 56));
-
-    await tester.tapAt(Offset(graceHalf.center.dx, graceHalf.top + 28));
+    expect(find.text('Design'), findsWidgets);
+    expect(find.text('Name'), findsNothing);
+    expect(find.text('Business category'), findsNothing);
+    expect(find.byTooltip('Back'), findsOneWidget);
+    await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('open-card')), findsNothing);
-    expect(find.text('Close'), findsNothing);
-    expect(find.text('Grace'), findsOneWidget);
+    expect(tester.getRect(graceCard).height, closeTo(graceRest.height, 1));
 
-    final adaCard = find.byKey(const ValueKey('wallet-pass-0'));
-    final adaRest = tester.getRect(adaCard);
-    final graceBeforeSlide = tester.getTopLeft(find.text('Grace')).dy;
     await tester.tap(find.text('Ada'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('open-card')), findsNothing);
-    final adaHalf = tester.getRect(adaCard);
-    expect((adaHalf.top - adaRest.top).abs(), lessThan(12));
-    expect(
-      adaHalf.height,
-      closeTo(adaRest.height * 1.5, adaRest.height * 0.12),
-    );
-    expect(
-      tester.getTopLeft(find.text('Grace')).dy,
-      greaterThan(graceBeforeSlide + 12),
-    );
+    expect(find.text('Studio'), findsOneWidget);
+    expect(find.text('Name'), findsNothing);
+    expect(find.byTooltip('Back'), findsOneWidget);
   });
 
-  testWidgets('one click only half-opens even when it delivers two taps', (
-    tester,
-  ) async {
+  testWidgets('one click opens the card detail', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -145,37 +122,13 @@ void main() {
     await tester.tap(find.text('Open wallet'));
     await tester.pumpAndSettle();
 
-    final adaCard = find.byKey(const ValueKey('wallet-pass-0'));
-    final before = tester.getRect(adaCard);
-    final graceBefore = tester.getTopLeft(find.text('Grace')).dy;
     await tester.tap(find.text('Ada'));
-    await tester.tap(find.text('Ada'));
-    await tester.pump();
-    expect(find.byKey(const ValueKey('open-card')), findsNothing);
-    await tester.pump(const Duration(milliseconds: 40));
-    expect(find.byKey(const ValueKey('open-card')), findsNothing);
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('open-card')), findsNothing);
-
-    final half = tester.getRect(adaCard);
-    expect((half.top - before.top).abs(), lessThan(12));
-    expect(half.height, closeTo(before.height * 1.5, before.height * 0.12));
-    expect(tester.getTopLeft(find.text('Ada')).dy, lessThan(half.top + 56));
-    expect(
-      tester.getTopLeft(find.text('Studio')).dy,
-      greaterThan(tester.getTopLeft(find.text('Ada')).dy),
-    );
-    expect(
-      tester.getTopLeft(find.text('Grace')).dy,
-      greaterThan(graceBefore + 12),
-    );
-    _expectCategoryClearOfNextCard(tester, 'Studio', 0);
-
-    await tester.tapAt(Offset(half.center.dx, half.top + 28));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('open-card')), findsNothing);
-    expect(find.text('Close'), findsNothing);
-    expect(tester.getRect(adaCard).height, closeTo(half.height, 1));
+    expect(find.text('Studio'), findsOneWidget);
+    expect(find.text('Name'), findsNothing);
+    expect(find.text('Business category'), findsNothing);
+    expect(find.byTooltip('Back'), findsOneWidget);
+    expect(find.text('Close wallet'), findsNothing);
   });
 
   testWidgets('an open sample card shows values and icons without titles', (
@@ -203,13 +156,18 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text(card.name));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('open-card')), findsNothing);
-    await tester.tap(find.text(card.name));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('open-card')), findsNothing);
-    expect(find.text('Close'), findsNothing);
-    expect(find.text(card.name), findsOneWidget);
+    expect(find.text(card.name), findsWidgets);
     expect(find.text(card.category), findsOneWidget);
+    expect(find.text(card.address), findsOneWidget);
+    expect(find.text(card.whatsapp), findsOneWidget);
+    expect(find.text(card.website), findsOneWidget);
+    expect(find.text('Name'), findsNothing);
+    expect(find.text('Business category'), findsNothing);
+    expect(find.text('Address'), findsNothing);
+    expect(find.text('WhatsApp'), findsNothing);
+    expect(find.text('Website'), findsNothing);
+    expect(find.byKey(const ValueKey('card-link-whatsapp')), findsOneWidget);
+    expect(find.byKey(const ValueKey('card-link-location')), findsOneWidget);
   });
 
   testWidgets('twenty test cards deal out of the pocket', (tester) async {

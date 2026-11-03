@@ -97,12 +97,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ada Lovelace'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('open-card')), findsNothing);
-    await tester.tap(find.text('Ada Lovelace'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('open-card')), findsNothing);
-    expect(find.text('Close'), findsNothing);
+    expect(find.text('ada@example.com'), findsWidgets);
     expect(find.text('Ada Lovelace'), findsWidgets);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
     expect(find.text('Analytical Engines'), findsWidgets);
 
     await tester.ensureVisible(find.text('Scan'));

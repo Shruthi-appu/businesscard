@@ -101,14 +101,16 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('wallet-pass-0')));
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('open-card')), findsNothing);
-      await tester.tap(find.byKey(const ValueKey('wallet-pass-0')));
-      await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('open-card')), findsNothing);
-      expect(find.text('Close'), findsNothing);
-      expect(launched, isEmpty);
-      expect(find.text(card.name), findsOneWidget);
+      expect(find.text(card.name), findsWidgets);
+      expect(find.text('Name'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('card-link-whatsapp')));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('card-link-location')));
+      await tester.pump();
+      expect(launched, hasLength(2));
+      expect(launched.first.toString(), contains('wa.me'));
+      expect(launched.last.toString(), contains('google.com/maps'));
     },
   );
 

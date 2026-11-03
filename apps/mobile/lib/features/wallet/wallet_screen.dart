@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api_problem.dart';
+import '../../core/auth_api.dart';
 import '../../core/providers.dart';
 import '../../ui/softxu_controls.dart';
 import '../auth/session_controller.dart';
@@ -65,9 +66,6 @@ class WalletScreen extends ConsumerWidget {
           if (context.mounted) context.go('/login');
         }
 
-        final lines = snapshot.cards.isEmpty
-            ? snapshot.titles
-            : snapshot.cards.map((card) => card.label).toList();
         CardsStage stage({Widget? menu, WalletMenuHandle? menuHandle}) {
           return CardsStage(
             fromCache: ready.fromCache,
@@ -76,19 +74,11 @@ class WalletScreen extends ConsumerWidget {
             onAdd: () => context.push('/wallet/new'),
             onScan: () => context.push('/wallet/scan'),
             onDesign: () => context.push('/wallet/create'),
-            passes: [
-              ...samplePasses(),
-              for (var index = 0; index < lines.length; index++)
-                WalletPass(
-                  label: lines[index],
-                  detail: index < snapshot.cards.length
-                      ? snapshot.cards[index].company
-                      : null,
-                  favourite:
-                      index < snapshot.cards.length &&
-                      snapshot.cards[index].isFavourite,
-                ),
-            ],
+            passes: _walletPasses(
+              context,
+              saved: snapshot.cards,
+              titles: snapshot.titles,
+            ),
           );
         }
 
@@ -105,6 +95,34 @@ class WalletScreen extends ConsumerWidget {
       },
     );
   }
+}
+
+/// Sample cards open their saved details. A signed-in card opens its record.
+List<WalletPass> _walletPasses(
+  BuildContext context, {
+  List<SavedCard> saved = const [],
+  List<String> titles = const [],
+}) {
+  final savedPasses = saved.isNotEmpty
+      ? [
+          for (final card in saved)
+            WalletPass(
+              label: card.label,
+              detail: card.company,
+              favourite: card.isFavourite,
+              onOpen: card.id.isEmpty
+                  ? null
+                  : () => context.push('/wallet/${card.id}'),
+            ),
+        ]
+      : [for (final title in titles) WalletPass(label: title)];
+  return [
+    for (var index = 0; index < testCards.length; index++)
+      testCards[index].toPass(
+        onOpen: () => context.push('/wallet/sample/$index'),
+      ),
+    ...savedPasses,
+  ];
 }
 
 class _SampleWallet extends ConsumerWidget {
@@ -153,7 +171,7 @@ class _SampleWallet extends ConsumerWidget {
         onAdd: () => context.push('/wallet/new'),
         onScan: () => context.push('/wallet/scan'),
         onDesign: () => context.push('/wallet/create'),
-        passes: samplePasses(),
+        passes: _walletPasses(context),
       ),
     );
   }

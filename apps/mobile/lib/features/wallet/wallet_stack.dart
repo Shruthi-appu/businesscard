@@ -83,10 +83,8 @@ class WalletPass {
 ///
 /// Cards wait in the wallet. Open wallet deals them over 2300ms into the
 /// vertical fan. Close wallet runs that deal backwards. Once the fan is open,
-/// a vertical scroll eases the stack up or down. The card under the cursor,
-/// or the first press on a card, opens that card halfway in its own slot.
-/// That press does not open the detail. A later press, once the half-open
-/// has settled, opens the full detail in place.
+/// a vertical scroll eases the stack up or down. The card under the cursor
+/// opens halfway in its own slot. A press opens that card's detail page.
 class CardsStage extends StatefulWidget {
   const CardsStage({
     super.key,
@@ -115,8 +113,6 @@ class CardsStage extends StatefulWidget {
   final WalletMenuHandle? menuHandle;
 
   /// Opens a fact's map, chat, or profile link. Defaults to [launchCardLink].
-  /// Callers may still pass a launcher. A fan press does not open a full-screen card.
-  // ignore: unused_field
   final CardLinkLauncher? openLink;
 
   @override
@@ -133,7 +129,6 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
   late final AnimationController _scrollAnim;
 
   int? _hover;
-  int? _pinned;
   int? _halfIndex;
 
   /// Movement past this counts as a drag, so the fan scrolls and the card
@@ -170,7 +165,6 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
           ..addStatusListener((status) {
             if (status == AnimationStatus.dismissed &&
                 _hover == null &&
-                _pinned == null &&
                 mounted) {
               setState(() => _halfIndex = null);
             }
@@ -239,7 +233,6 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     _scrollFrom = 0;
     _scrollTarget = 0;
     _scrollAnim.stop();
-    _pinned = null;
     _hover = null;
     _collapseLift();
     _deal.reverse();
@@ -287,26 +280,48 @@ class _CardsStageState extends State<CardsStage> with TickerProviderStateMixin {
     if (dy != 0) _nudgeScroll(dy);
   }
 
-  /// A press that is not a drag half-opens [index] in the fan.
-  /// It never covers the screen with a full card.
+  /// A press that is not a drag opens the detail for [index].
   void _pressCard(int index) {
     if (_pressDrag || _intro < 1 || _menuOpen) return;
-    if (_pinned == index) {
-      _aimLift(index);
+    if (index < 0 || index >= widget.passes.length) return;
+    final pass = widget.passes[index];
+    final open = pass.onOpen;
+    if (open != null) {
+      open();
       return;
     }
-    _beginHalfOpen(index);
-  }
-
-  void _beginHalfOpen(int index) {
-    _pinned = index;
-    _aimLift(index);
+    final facts = <WalletFact>[
+      for (final fact in pass.facts)
+        if (fact.value.trim().isNotEmpty) fact,
+    ];
+    if (facts.isEmpty && pass.label.isNotEmpty) {
+      facts.add(WalletFact(field: 'name', label: 'Name', value: pass.label));
+    }
+    final category = pass.detail?.trim() ?? '';
+    if (facts.length < 2 && category.isNotEmpty) {
+      facts.add(
+        WalletFact(
+          field: 'category',
+          label: 'Business category',
+          value: category,
+        ),
+      );
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => _PassDetailPage(
+          title: pass.label.isEmpty ? 'Card' : pass.label,
+          facts: facts,
+          openLink: widget.openLink,
+        ),
+      ),
+    );
   }
 
   void _setHover(int? index) {
     if (index == _hover) return;
     _hover = index;
-    _aimLift(_hover ?? _pinned);
+    _aimLift(_hover);
   }
 
   void _aimLift(int? index) {
@@ -1573,4 +1588,40 @@ class _FacePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _FacePainter oldDelegate) =>
       oldDelegate.back != back || oldDelegate.palette != palette;
+}
+
+/// Values and icons for one card. Field titles stay off the page.
+class _PassDetailPage extends StatelessWidget {
+  const _PassDetailPage({
+    required this.title,
+    required this.facts,
+    required this.openLink,
+  });
+
+  final String title;
+  final List<WalletFact> facts;
+  final CardLinkLauncher? openLink;
+
+  @override
+  Widget build(BuildContext context) {
+    return SoftxuPage(
+      title: title,
+      leading: phaseBack(context),
+      body: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          for (final fact in facts)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: CardFactRow(
+                field: fact.field,
+                value: fact.value,
+                extra: fact.extra,
+                launcher: openLink,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }
