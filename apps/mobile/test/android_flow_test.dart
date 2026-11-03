@@ -37,6 +37,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(MaterialApp), findsOneWidget);
       expect(find.byType(CupertinoApp), findsNothing);
+      expect(find.byKey(const Key('softxu-wordmark')), findsOneWidget);
+      expect(find.text('Softxu'), findsOneWidget);
+      expect(find.text('Sign in'), findsWidgets);
 
       await tester.tap(find.text('Create an account'));
       await tester.pumpAndSettle();

@@ -197,10 +197,21 @@ class _AuthScaffold extends StatelessWidget {
           )
         : Text(title, style: Theme.of(context).textTheme.headlineMedium);
     return SoftxuPage(
-      title: 'Softxu',
       body: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
         children: [
+          const Text(
+            'Softxu',
+            key: Key('softxu-wordmark'),
+            style: TextStyle(
+              fontFamily: 'Georgia',
+              fontSize: 44,
+              height: 1,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF0F0F0F),
+            ),
+          ),
+          const SizedBox(height: 28),
           heading,
           const SizedBox(height: 8),
           Text(subtitle),
