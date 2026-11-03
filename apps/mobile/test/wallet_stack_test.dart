@@ -146,6 +146,66 @@ void main() {
     await pointer.removePointer();
     expect(find.text('Close wallet'), findsOneWidget);
   });
+
+  testWidgets('account actions stay behind the side menu', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CardsStage(
+            onAdd: _noop,
+            onScan: _noop,
+            onDesign: _noop,
+            menu: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Account',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                const Text('Export my data'),
+                const SizedBox(height: 28),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'I understand this schedules deletion and signs me out.',
+                      ),
+                    ),
+                    Switch(value: false, onChanged: (_) {}),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text('Delete account'),
+              ],
+            ),
+            passes: const [WalletPass(label: 'Ada', detail: 'Studio')],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add+'), findsOneWidget);
+    expect(find.text('Scan'), findsOneWidget);
+    expect(find.text('Design'), findsOneWidget);
+    expect(find.text('Export my data'), findsNothing);
+    expect(find.text('Delete account'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('wallet-menu')));
+    await tester.pumpAndSettle();
+    expect(find.text('Export my data'), findsOneWidget);
+    expect(find.text('Delete account'), findsOneWidget);
+    expect(
+      find.text('I understand this schedules deletion and signs me out.'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
 
 void _noop() {}

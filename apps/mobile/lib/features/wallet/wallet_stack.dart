@@ -47,8 +47,7 @@ class CardsStage extends StatefulWidget {
     required this.onDesign,
     this.fromCache = false,
     this.notice,
-    this.account,
-    this.footer,
+    this.menu,
   });
 
   final List<WalletPass> passes;
@@ -57,8 +56,9 @@ class CardsStage extends StatefulWidget {
   final VoidCallback onDesign;
   final bool fromCache;
   final String? notice;
-  final Widget? account;
-  final Widget? footer;
+
+  /// Account actions. Hidden until the side menu button opens them.
+  final Widget? menu;
 
   @override
   State<CardsStage> createState() => _CardsStageState();
@@ -73,6 +73,7 @@ class _CardsStageState extends State<CardsStage>
   late final AnimationController _deal;
   int? _hover;
   int? _opened;
+  var _menuOpen = false;
 
   @override
   void initState() {
@@ -223,6 +224,13 @@ class _CardsStageState extends State<CardsStage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (widget.menu != null) ...[
+                          _MenuButton(
+                            height: btnH,
+                            onPressed: () => setState(() => _menuOpen = true),
+                          ),
+                          SizedBox(height: gap),
+                        ],
                         _Pill(
                           label: 'Add+',
                           height: btnH,
@@ -243,20 +251,9 @@ class _CardsStageState extends State<CardsStage>
                           scale: navScale,
                           onPressed: widget.onDesign,
                         ),
-                        if (widget.account != null) ...[
-                          const SizedBox(height: 12),
-                          SizedBox(width: 210, child: widget.account),
-                        ],
                       ],
                     ),
                   ),
-                  if (widget.footer != null)
-                    Positioned(
-                      left: 16,
-                      right: 16,
-                      bottom: 8,
-                      child: widget.footer!,
-                    ),
                   if (_hover != null && _hover! < deck.cards.length)
                     _card(deck.cards[_hover!], deck),
                   if (_opened != null && _opened! < widget.passes.length)
@@ -286,6 +283,13 @@ class _CardsStageState extends State<CardsStage>
                             },
                     ),
                   ),
+                  if (_menuOpen && widget.menu != null)
+                    Positioned.fill(
+                      child: _SideMenu(
+                        onClose: () => setState(() => _menuOpen = false),
+                        child: widget.menu!,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -494,6 +498,111 @@ class _Pill extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Opens the side menu. Sits above Add, Scan, and Design.
+class _MenuButton extends StatelessWidget {
+  const _MenuButton({required this.height, required this.onPressed});
+
+  final double height;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Menu',
+      child: Material(
+        key: const ValueKey('wallet-menu'),
+        color: const Color(0xFF9E2E2E),
+        shape: StadiumBorder(
+          side: BorderSide(
+            color: const Color(0xFFF4F1EA).withValues(alpha: 0.55),
+          ),
+        ),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onPressed,
+          child: SizedBox(
+            height: height,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Center(
+                child: Icon(Icons.menu, color: _CardsStageState._ink, size: 18),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SideMenu extends StatelessWidget {
+  const _SideMenu({required this.onClose, required this.child});
+
+  final VoidCallback onClose;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = math.min(300.0, MediaQuery.sizeOf(context).width * 0.84);
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: onClose,
+            behavior: HitTestBehavior.opaque,
+            child: const ColoredBox(color: Color(0x590F0F0F)),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: width,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: -1, end: 0),
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            builder: (context, dx, child) {
+              return FractionalTranslation(
+                translation: Offset(dx, 0),
+                child: child,
+              );
+            },
+            child: Material(
+              color: const Color(0xFFF4F1EA),
+              elevation: 16,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 12, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: IconButton(
+                          key: const ValueKey('wallet-menu-close'),
+                          tooltip: 'Close menu',
+                          onPressed: onClose,
+                          icon: const Icon(
+                            Icons.close,
+                            color: Color(0xFF9E2E2E),
+                          ),
+                        ),
+                      ),
+                      Expanded(child: SingleChildScrollView(child: child)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

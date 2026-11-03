@@ -68,11 +68,10 @@ class WalletScreen extends ConsumerWidget {
         final lines = snapshot.cards.isEmpty
             ? snapshot.titles
             : snapshot.cards.map((card) => card.label).toList();
-        CardsStage stage({Widget? account, Widget? footer}) {
+        CardsStage stage({Widget? menu}) {
           return CardsStage(
             fromCache: ready.fromCache,
-            account: account,
-            footer: footer,
+            menu: menu,
             onAdd: () => context.push('/wallet/new'),
             onScan: () => context.push('/wallet/scan'),
             onDesign: () => context.push('/wallet/create'),
@@ -103,10 +102,7 @@ class WalletScreen extends ConsumerWidget {
               : TextButton(onPressed: signOut, child: const Text('Sign out')),
           body: ready.fromCache
               ? stage()
-              : _AccountSection(
-                  builder: (export, danger) =>
-                      stage(account: export, footer: danger),
-                ),
+              : _AccountSection(builder: (menu) => stage(menu: menu)),
         );
       },
     );
@@ -168,7 +164,7 @@ class _SampleWallet extends ConsumerWidget {
 class _AccountSection extends ConsumerStatefulWidget {
   const _AccountSection({required this.builder});
 
-  final Widget Function(Widget export, Widget danger) builder;
+  final Widget Function(Widget menu) builder;
 
   @override
   ConsumerState<_AccountSection> createState() => _AccountSectionState();
@@ -190,7 +186,7 @@ class _AccountSectionState extends ConsumerState<_AccountSection> {
           );
     return widget.builder(
       Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
             'Account',
@@ -201,11 +197,7 @@ class _AccountSectionState extends ConsumerState<_AccountSection> {
             onPressed: _pending ? null : _export,
             label: _pending ? 'Working…' : 'Export my data',
           ),
-        ],
-      ),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+          const SizedBox(height: 28),
           _ConfirmDelete(
             value: _confirm,
             onChanged: (value) => setState(() => _confirm = value),

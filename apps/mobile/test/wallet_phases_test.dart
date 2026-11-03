@@ -38,6 +38,16 @@ void main() {
     expect(find.text('Scan'), findsOneWidget);
     expect(find.text('Design'), findsOneWidget);
     expect(find.text('IncardIt'), findsOneWidget);
+    expect(find.text('Export my data'), findsNothing);
+    expect(find.text('Delete account'), findsNothing);
+    expect(
+      find.text('I understand this schedules deletion and signs me out.'),
+      findsNothing,
+    );
+    expect(find.text('Ada Lovelace'), findsWidgets);
+
+    await tester.tap(find.byKey(const ValueKey('wallet-menu')));
+    await tester.pumpAndSettle();
     expect(find.text('Export my data'), findsOneWidget);
     expect(find.text('Delete account'), findsOneWidget);
     expect(
@@ -48,7 +58,11 @@ void main() {
       tester.getCenter(find.text('Delete account')).dy,
       greaterThan(tester.getCenter(find.text('Export my data')).dy + 40),
     );
-    expect(find.text('Ada Lovelace'), findsWidgets);
+
+    await tester.tap(find.byKey(const ValueKey('wallet-menu-close')));
+    await tester.pumpAndSettle();
+    expect(find.text('Export my data'), findsNothing);
+    expect(find.text('Delete account'), findsNothing);
 
     await tester.tap(find.text('Open wallet'));
     await tester.pumpAndSettle();
